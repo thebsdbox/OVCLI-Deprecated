@@ -13,7 +13,7 @@
 
 #define BUFFER_SIZE  (256 * 1024)  /* 256 KB */
 
-#define URL_FORMAT   "https://api.github.com/repos/%s/%s/commits"
+#define URL_FORMAT   "https://%s/rest/%s"//"https://api.github.com/repos/%s/%s/commits"
 #define URL_SIZE     256
 
 /* Return the offset of the first newline in text or the length of
@@ -73,10 +73,12 @@ static char *request(const char *url)
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
     
-    /* GitHub commits API v3 requires a User-Agent header */
-    headers = curl_slist_append(headers, "User-Agent: Jansson-Tutorial");
+    /* HP OneView needs a Content-Type setting*/
+    headers = curl_slist_append(headers, "Content-Type: application/json");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0); /* don't veryify peer Needs changing */
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{\"userName\":\"Administrator\",\"password\":\"peps1max\"}");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);
     
@@ -132,7 +134,7 @@ int main(int argc, char *argv[])
     }
     
     snprintf(url, URL_SIZE, URL_FORMAT, argv[1], argv[2]);
-    
+    printf("%s\n", url);
     text = request(url);
     if(!text)
         return 1;
@@ -145,7 +147,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
         return 1;
     }
-    
+    printf("%s",json_string_value(json_object_get(root, "sessionID")));
+    /*
     if(!json_is_array(root))
     {
         fprintf(stderr, "error: root is not an array\n");
@@ -195,7 +198,7 @@ int main(int argc, char *argv[])
                newline_offset(message_text),
                message_text);
     }
-    
+    */
     json_decref(root);
     return 0;
 }
