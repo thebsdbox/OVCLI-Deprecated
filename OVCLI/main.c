@@ -1,8 +1,7 @@
 /*
- * Copyright (c) 2009-2014 Petri Lehtinen <petri@digip.org>
+ * A command line interface for HP OneView
  *
- * Jansson is free software; you can redistribute it and/or modify
- * it under the terms of the MIT license. See LICENSE for details.
+ * Daniel Finneran (HP) Daniel.jam.finneran@hp.com 20/05/2015
  */
 
 #include <stdlib.h>
@@ -11,13 +10,18 @@
 #include "jansson.h"
 #include <curl/curl.h>
 
+#include "OVSessionID.h"
+
 #define BUFFER_SIZE  (256 * 1024)  /* 256 KB */
 
-#define URL_FORMAT   "https://%s/rest/%s"//"https://api.github.com/repos/%s/%s/commits"
+#define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
+
 
 /* Return the offset of the first newline in text or the length of
  text if there's no newline */
+
+/*
 static long newline_offset(const char *text)
 {
     const char *newline = strchr(text, '\n');
@@ -26,7 +30,8 @@ static long newline_offset(const char *text)
     else
         return (int)(newline - text);
 }
-
+*/
+ 
 struct write_result
 {
     char *data;
@@ -119,7 +124,9 @@ error:
 
 int main(int argc, char *argv[])
 {
-    size_t i;
+
+    
+    
     char *text;
     char url[URL_SIZE];
     
@@ -128,11 +135,11 @@ int main(int argc, char *argv[])
     
     if(argc != 3)
     {
-        fprintf(stderr, "usage: %s USER REPOSITORY\n\n", argv[0]);
-        fprintf(stderr, "List commits at USER's REPOSITORY.\n\n");
+        fprintf(stderr, "usage: %s COMMAND <parameters>\n\n", argv[0]);
+        fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
         return 2;
     }
-    
+    printf("%s\n", readSessionID());
     snprintf(url, URL_SIZE, URL_FORMAT, argv[1], argv[2]);
     printf("%s\n", url);
     text = request(url);
@@ -147,7 +154,14 @@ int main(int argc, char *argv[])
         fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
         return 1;
     }
-    printf("%s",json_string_value(json_object_get(root, "sessionID")));
+    const char* sessionID = json_string_value(json_object_get(root, "sessionID"));
+    
+    // Write the Session
+    if (writeSessionID(sessionID) != 0) {
+        printf("Error saving Session ID\n");
+        return 1;
+    }
+    printf("%s\n",sessionID);
     /*
     if(!json_is_array(root))
     {
