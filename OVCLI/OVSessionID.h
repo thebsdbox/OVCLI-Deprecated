@@ -19,3 +19,6 @@
 
 int writeSessionID(const char *); // Write the session ID to ~/.sessionID
 char* readSessionID(void); // return the session ID as a string from ~/.sessionID (returns NULL in error)
+
+int writeSessionIDforHost(const char *sessionID, const char *host);
+char* readSessionIDforHost(const char *host);

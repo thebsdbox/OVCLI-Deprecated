@@ -7,7 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3700A4581B346D3C0078DD77 /* OVOutput.c in Sources */ = {isa = PBXBuildFile; fileRef = 3700A4571B346D3C0078DD77 /* OVOutput.c */; };
 		373409091B0CFBC5005E49F2 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 373409081B0CFBC5005E49F2 /* main.c */; };
+		373409101B0CFBEA005E49F2 /* libjansson.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3734090F1B0CFBEA005E49F2 /* libjansson.a */; };
+		373409141B0CFC47005E49F2 /* libcurl.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 373409131B0CFC47005E49F2 /* libcurl.dylib */; };
+		3757A8AB1B0DF5AA006F4F8F /* OVSessionID.c in Sources */ = {isa = PBXBuildFile; fileRef = 3757A8A91B0DF5AA006F4F8F /* OVSessionID.c */; };
+		37F271661B0F2DC90097E583 /* OVHttps.c in Sources */ = {isa = PBXBuildFile; fileRef = 37F271641B0F2DC90097E583 /* OVHttps.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -23,8 +28,19 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		3700A4571B346D3C0078DD77 /* OVOutput.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = OVOutput.c; sourceTree = "<group>"; };
 		373409051B0CFBC5005E49F2 /* OVCLI */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = OVCLI; sourceTree = BUILT_PRODUCTS_DIR; };
 		373409081B0CFBC5005E49F2 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		3734090F1B0CFBEA005E49F2 /* libjansson.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libjansson.a; sourceTree = "<group>"; };
+		373409111B0CFBFF005E49F2 /* jansson_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jansson_config.h; sourceTree = "<group>"; };
+		373409121B0CFBFF005E49F2 /* jansson.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jansson.h; sourceTree = "<group>"; };
+		373409131B0CFC47005E49F2 /* libcurl.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcurl.dylib; path = usr/lib/libcurl.dylib; sourceTree = SDKROOT; };
+		3756E9CB1B1F73D400EDC894 /* OVOutput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OVOutput.h; sourceTree = "<group>"; };
+		3757A8A91B0DF5AA006F4F8F /* OVSessionID.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = OVSessionID.c; sourceTree = "<group>"; };
+		3757A8AA1B0DF5AA006F4F8F /* OVSessionID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OVSessionID.h; sourceTree = "<group>"; };
+		37F271641B0F2DC90097E583 /* OVHttps.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = OVHttps.c; sourceTree = "<group>"; };
+		37F271651B0F2DC90097E583 /* OVHttps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OVHttps.h; sourceTree = "<group>"; };
+		37F271671B0F31970097E583 /* README.rtf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.rtf; path = README.rtf; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +48,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				373409141B0CFC47005E49F2 /* libcurl.dylib in Frameworks */,
+				373409101B0CFBEA005E49F2 /* libjansson.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,8 +59,12 @@
 		373408FC1B0CFBC5005E49F2 = {
 			isa = PBXGroup;
 			children = (
+				37F271671B0F31970097E583 /* README.rtf */,
+				373409131B0CFC47005E49F2 /* libcurl.dylib */,
 				373409071B0CFBC5005E49F2 /* OVCLI */,
 				373409061B0CFBC5005E49F2 /* Products */,
+				373409111B0CFBFF005E49F2 /* jansson_config.h */,
+				373409121B0CFBFF005E49F2 /* jansson.h */,
 			);
 			sourceTree = "<group>";
 		};
@@ -58,6 +80,13 @@
 			isa = PBXGroup;
 			children = (
 				373409081B0CFBC5005E49F2 /* main.c */,
+				3734090F1B0CFBEA005E49F2 /* libjansson.a */,
+				3757A8A91B0DF5AA006F4F8F /* OVSessionID.c */,
+				3757A8AA1B0DF5AA006F4F8F /* OVSessionID.h */,
+				37F271641B0F2DC90097E583 /* OVHttps.c */,
+				37F271651B0F2DC90097E583 /* OVHttps.h */,
+				3756E9CB1B1F73D400EDC894 /* OVOutput.h */,
+				3700A4571B346D3C0078DD77 /* OVOutput.c */,
 			);
 			path = OVCLI;
 			sourceTree = "<group>";
@@ -118,6 +147,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				37F271661B0F2DC90097E583 /* OVHttps.c in Sources */,
+				3700A4581B346D3C0078DD77 /* OVOutput.c in Sources */,
+				3757A8AB1B0DF5AA006F4F8F /* OVSessionID.c in Sources */,
 				373409091B0CFBC5005E49F2 /* main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -205,6 +237,10 @@
 		3734090D1B0CFBC5005E49F2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/OVCLI",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -212,6 +248,10 @@
 		3734090E1B0CFBC5005E49F2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/OVCLI",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -235,6 +275,7 @@
 				3734090E1B0CFBC5005E49F2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

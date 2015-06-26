@@ -9,12 +9,14 @@
 #include "OVSessionID.h"
 
 
-int writeSessionID(const char *sessionID)
+
+
+int writeSessionIDforHost(const char *sessionID, const char *host)
 {
     FILE *fp;
     char filepath[1000]; //large file path
     strcpy(filepath, getenv("HOME")); // copy in the $HOME env into the string
-    strcat(filepath, sessionIDPath); // Append the SessionID path
+    strcat(filepath, host); // Append the SessionID path
     
     fp = fopen(filepath, "w");
     if (fp) { /*file opened succesfully */
@@ -28,7 +30,12 @@ int writeSessionID(const char *sessionID)
     return 0;
 }
 
-char* readSessionID()
+int writeSessionID(const char *sessionID)
+{
+    return writeSessionIDforHost(sessionID, sessionIDPath);
+}
+
+char* readSessionIDforHost(const char *host)
 {
     FILE *fp;
     char buffer[33]; //size of Session ID
@@ -37,7 +44,7 @@ char* readSessionID()
     sessionID = malloc(sizeof(buffer));
 
     strcpy(filepath, getenv("HOME")); // copy in the $HOME env into the string
-    strcat(filepath, sessionIDPath);
+    strcat(filepath, host);
 
     fp = fopen(filepath, "r");
     if (fp) { /*file opened succesfully */
@@ -49,4 +56,9 @@ char* readSessionID()
     }
     strcpy(sessionID, buffer);
     return sessionID;
+}
+
+char* readSessionID(void)
+{
+    return readSessionIDforHost(sessionIDPath);
 }
