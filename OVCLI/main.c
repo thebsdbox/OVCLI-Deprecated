@@ -248,7 +248,48 @@ int main(int argc, char *argv[])
             return 1;
         }
         printf("[DEBUG] OVID:\t  %s\n",sessionID);
-        if (strstr(argv[3], "SERVER-PROFILES")) {
+        if (strstr(argv[3], "NETWORKS")) {
+            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "ethernet-networks");
+            
+            // Call to HP OneView API
+            httpData = getRequestWithUrlAndHeader(url, sessionID);
+            
+            if(!httpData)
+                return 1;
+            
+            root = json_loads(httpData, 0, &error);
+            
+            json_t *memberArray = json_object_get(root, "members");
+            if (json_array_size(memberArray) != 0) {
+                size_t index;
+                json_t *network = NULL;
+                //char *json_text;
+                json_array_foreach(memberArray, index, network) {
+                    const char *uri = json_string_value(json_object_get(network, "uri"));
+                    if (uri != NULL) {
+                        if (strstr(uri, argv[4])) {
+                            // Remove bits
+                            //json_object_del(network, "uri");
+                            json_object_del(network, "eTag");
+                            json_object_del(network, "modified");
+                            json_object_del(network, "created");
+                            json_object_del(network, "connectionTemplateUri");
+
+                            snprintf(url, URL_SIZE, URL_FORMAT, argv[5], "ethernet-networks");
+                            sprintf(path, "/.%s_ov",argv[5]);
+                            
+                            sessionID = readSessionIDforHost(path);
+                            httpData = postRequestWithUrlAndDataAndHeader(url, json_dumps(network, JSON_ENSURE_ASCII), sessionID);
+                            
+                            if(!httpData)
+                                return 1;
+                            
+                        }
+                    }
+                }
+            }
+            
+        } else if (strstr(argv[3], "SERVER-PROFILES")) {
             snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
             
             // Call to HP OneView API
