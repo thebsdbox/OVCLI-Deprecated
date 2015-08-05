@@ -39,15 +39,18 @@ int valid_digit(char *ip_str)
 /* return 1 if IP string is valid, else return 0 */
 int is_valid_ip(char *ip_str)
 {
+    // Additional code to copy the string so the original stays intact
+    char *tempString = calloc(strlen(ip_str)+1, sizeof(char));
+    strcpy(tempString, ip_str);
     int num, dots = 0;
     char *ptr;
     
-    if (ip_str == NULL)
+    if (tempString == NULL)
         return 0;
     
     // See following link for strtok()
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strtok_r.html
-    ptr = strtok(ip_str, DELIM);
+    ptr = strtok(tempString, DELIM);
     
     if (ptr == NULL)
         return 0;
@@ -111,35 +114,8 @@ int main(int argc, char *argv[])
 
 
     if (strstr(argv[2], "LOGIN")) {
-
-        // Pack the json
-        root = json_pack("{s:s, s:s}", "userName", argv[3], "password", argv[4]);
-        // dump it as a string to pass to the curl libs
-        char *json_text = json_dumps(root, JSON_ENCODE_ANY);
-        //build URL
-        snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "login-sessions");
-        if (getenv("OV_DEBUG"))
-            printf("[INFO] URL:\t %s\n", url);
-        // Call to HP OneView API
-        httpData = postRequestWithUrlAndData(url, json_text);
-        if (getenv("OV_DEBUG"))
-            printf("[INFO] JSON:\t %s\n", json_text);
-        free (json_text);
-        if(!httpData)
-            return 1;
-        
-        root = json_loads(httpData, 0, &error);
-        free(httpData);
-        const char* sessionID = json_string_value(json_object_get(root, "sessionID"));
-        
-        // Write the Session
-        if (writeSessionIDforHost(sessionID, path) != 0) {
-            printMessage(RED, "ERROR", "The HP OneView Session ID could not be saved");
-            return 1;
-        }
-        printf("[DEBUG] OVID:\t  %s\n",sessionID);
-        return 0;
-        
+        ovLogin(argv, path);
+        return 0;        
     } else if (strstr(argv[2], "SHOW")) {
         
         char *sessionID = readSessionIDforHost(path);
