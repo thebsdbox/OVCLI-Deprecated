@@ -27,4 +27,6 @@
 
 #endif
 
+extern int debug; // A global variable declaring if debug mode is enabled.
+
 int printMessage(int labelColour, char *level, char *text);

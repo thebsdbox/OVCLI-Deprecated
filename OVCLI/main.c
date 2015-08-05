@@ -2,6 +2,8 @@
  * A command line interface for HP OneView
  *
  * Daniel Finneran (HP) Daniel.jam.finneran@hp.com 20/05/2015
+ *
+ * IP Addressing check code taken from http://www.geeksforgeeks.org/program-to-validate-an-ip-address/
  */
 
 #include <stdlib.h>
@@ -16,26 +18,70 @@
 
 #include "OVShow.h"
 
-
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
+#define DELIM "."
 
 int debug;
+
+/* return 1 if string contain only digits, else return 0 */
+int valid_digit(char *ip_str)
+{
+    while (*ip_str) {
+        if (*ip_str >= '0' && *ip_str <= '9')
+            ++ip_str;
+        else
+            return 0;
+    }
+    return 1;
+}
+
+/* return 1 if IP string is valid, else return 0 */
+int is_valid_ip(char *ip_str)
+{
+    int num, dots = 0;
+    char *ptr;
+    
+    if (ip_str == NULL)
+        return 0;
+    
+    // See following link for strtok()
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strtok_r.html
+    ptr = strtok(ip_str, DELIM);
+    
+    if (ptr == NULL)
+        return 0;
+    
+    while (ptr) {
+        
+        /* after parsing string, it must contain only digits */
+        if (!valid_digit(ptr))
+            return 0;
+        
+        num = atoi(ptr);
+        
+        /* check for valid IP */
+        if (num >= 0 && num <= 255) {
+            /* parse remaining string */
+            ptr = strtok(NULL, DELIM);
+            if (ptr != NULL)
+                ++dots;
+        } else
+            return 0;
+    }
+    
+    /* valid IP string must contain 3 dots */
+    if (dots != 3)
+        return 0;
+    return 1;
+}
+
+
 
 int main(int argc, char *argv[])
 {
     
-    if (getenv("OV_DEBUG")) {
-        debug = 1; // debug mode enabled
-    } else {
-        debug = 0; // debug mode disabled
-    }
-
-    char url[URL_SIZE];
-    
-    char *httpData;
-    json_t *root;
-    json_error_t error;
+    // Peform an initial check to see what parameters have been passed
     char path[100];
     if (argc >1) {
         sprintf(path, "/.%s_ov",argv[1]);
@@ -47,6 +93,22 @@ int main(int argc, char *argv[])
         fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
         return 2;
     }
+    is_valid_ip(argv[1])? printf("Valid\n"): printf("Not valid\n");
+    
+    
+    // Check for Debug Mode
+    if (getenv("OV_DEBUG")) {
+        debug = 1; // debug mode enabled
+    } else {
+        debug = 0; // debug mode disabled
+    }
+
+    
+    char url[URL_SIZE];
+    char *httpData;
+    json_t *root;
+    json_error_t error;
+
 
     if (strstr(argv[2], "LOGIN")) {
 
@@ -69,8 +131,6 @@ int main(int argc, char *argv[])
         root = json_loads(httpData, 0, &error);
         free(httpData);
         const char* sessionID = json_string_value(json_object_get(root, "sessionID"));
-        //
-
         
         // Write the Session
         if (writeSessionIDforHost(sessionID, path) != 0) {
@@ -87,101 +147,7 @@ int main(int argc, char *argv[])
             printf("[ERROR] No session ID");
             return 1;
         }
-        
         ovShow(sessionID, argc, argv);
-
-        
-        //printf("[DEBUG] OVID:\t  %s\n",sessionID);
-        if (argc >=4) {
-        if (strstr(argv[3], "SERVER-PROFILES")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
-        } else if (strstr(argv[3], "SERVER-HARDWARE-TYPES")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-hardware-types");
-        } else if (strstr(argv[3], "SERVER-HARDWARE")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-hardware");
-        } else if (strstr(argv[3], "ENCLOSURE-GROUPS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "enclosure-groups");
-        } else if (strstr(argv[3], "NETWORKS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "ethernet-networks");
-        } else if (strstr(argv[3], "NETWORK-SETS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "network-sets");
-        } else if (strstr(argv[3], "INTERCONNECT-GROUPS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "logical-interconnect-groups");
-        } else if (strstr(argv[3], "INTERCONNECTS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "interconnects");
-        }} else {
-            printf("\n SHOW COMMANDS\n------------\n");
-            printf(" SERVER-PROFILES - List server profiles\n");
-            printf(" SERVER-HARDWARE - list detected physical hardware\n");
-            printf(" SERVER-HARDWARE-TYPES - List discovered hardware types\n");
-            printf(" ENCLOSURE-GROUPS - List defined enclosure groups\n");
-            printf(" NETWORKS - List defined networks\n");
-            printf(" INTERCONNECTS - List uplinks\n\n");
-            return 1;
-        }
-        
-        
-        // DISPLAY URL
-        //printf("[DEBUG] URL:\t %s\n", url);
-        // Call to HP OneView API
-        httpData = getRequestWithUrlAndHeader(url, sessionID);
-        
-        if(!httpData)
-            return 1;
-        
-        //printf("[DEBUG] JSON: %s\n", httpData);
-        root = json_loads(httpData, 0, &error);
-        free(httpData);
-        if (argv[4] == NULL) {
-            printf("\n\nPlease enter output:\n");
-            printf("RAW: ASCII ENCODED RAW JSON\n");
-            printf("PRETTY: Parsed and Indented JSON\n");
-            printf("URI: Lists NAME and URI\n");
-            printf("\n\n");
-            return 1;
-        }
-        if (strstr(argv[4], "RAW")) {
-            char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
-            printf("%s\n", json_text);
-            free(json_text);
-        
-        } else if (strstr(argv[4], "PRETTY")) {
-            char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-            printf("%s\n", json_text);
-            free(json_text);
-        } else if (strstr(argv[4], "URI")) {
-            // will return URI and Name
-            json_t *memberArray = json_object_get(root, "members");
-            if (json_array_size(memberArray) != 0) {
-                size_t index;
-                json_t *value;
-                json_array_foreach(memberArray, index, value) {
-                    const char *uri = json_string_value(json_object_get(value, "uri"));
-                    const char *name = json_string_value(json_object_get(value, "name"));
-                    printf("%s \t %s\n", uri, name);
-                }
-            }
-        } else if (strstr(argv[4], "FIELDS")) {
-
-            //int fieldCount = argc -5; //argv[0] is the path to the program
-            json_t *memberArray = json_object_get(root, "members");
-            if (json_array_size(memberArray) != 0) {
-                size_t index;
-                json_t *value;
-                json_array_foreach(memberArray, index, value) {
-                    for (int i = 5; i< argc; i++) {
-                        const char *fieldObject = json_string_value(json_object_get(value, argv[i]));
-                        if (fieldObject == NULL) {
-                            printf("\"\" \t"); // If NULL value is returned or Field not found then "" is returned
-                        } else
-                            printf("%s \t", fieldObject);
-                    }
-                    printf(" \n"); // New line
-                }
-            }
-        }
-
-        
         return 0;
 
     } else if (strstr(argv[2], "CREATE")) {
