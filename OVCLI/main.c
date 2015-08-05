@@ -12,35 +12,25 @@
 
 #include "OVSessionID.h"
 #include "OVHttps.h"
-#include "OVOutput.h"
+#include "OVOutput.h" // Contains the debug option
+
+#include "OVShow.h"
 
 
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
 
-
-/* Return the offset of the first newline in text or the length of
- text if there's no newline */
-
-/*
-static long newline_offset(const char *text)
-{
-    const char *newline = strchr(text, '\n');
-    if(!newline)
-        return strlen(text);
-    else
-        return (int)(newline - text);
-}
-*/
-
-
-
-
+int debug;
 
 int main(int argc, char *argv[])
 {
     
-    //char *text;
+    if (getenv("OV_DEBUG")) {
+        debug = 1; // debug mode enabled
+    } else {
+        debug = 0; // debug mode disabled
+    }
+
     char url[URL_SIZE];
     
     char *httpData;
@@ -52,8 +42,7 @@ int main(int argc, char *argv[])
     }
     if(argc < 3)
     {
-        if (getenv("OV_DEBUG"))
-            printMessage(YELLOW, "test", "test complete");
+        printMessage(YELLOW, "DEBUG", "No parameters passed");
         fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n\n", argv[0]);
         fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
         return 2;
@@ -92,11 +81,16 @@ int main(int argc, char *argv[])
         return 0;
         
     } else if (strstr(argv[2], "SHOW")) {
+        
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
             printf("[ERROR] No session ID");
             return 1;
         }
+        
+        ovShow(sessionID, argc, argv);
+
+        
         //printf("[DEBUG] OVID:\t  %s\n",sessionID);
         if (argc >=4) {
         if (strstr(argv[3], "SERVER-PROFILES")) {
@@ -126,7 +120,9 @@ int main(int argc, char *argv[])
             return 1;
         }
         
-        printf("[DEBUG] URL:\t %s\n", url);
+        
+        // DISPLAY URL
+        //printf("[DEBUG] URL:\t %s\n", url);
         // Call to HP OneView API
         httpData = getRequestWithUrlAndHeader(url, sessionID);
         
@@ -194,13 +190,20 @@ int main(int argc, char *argv[])
             printf("[ERROR] No session ID");
             return 1;
         }
-        printf("[DEBUG] OVID:\t  %s\n",sessionID);
+        
+        // Debug output
+        //printf("[DEBUG] OVID:\t  %s\n",sessionID);
+        
+        
         if (strstr(argv[3], "SERVER-PROFILES")) {
             snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
             root = json_pack("{s:s, s:s, s:s, s:s}","type", "ServerProfileV4", "name", argv[4], "serverHardwareTypeUri", argv[5], "enclosureGroupUri", argv[6]);
             char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
-            printf("[DEBUG] URL:\t %s\n", url);
+            
+            // Debug output
+            //printf("[DEBUG] URL:\t %s\n", url);
             // Call to HP OneView API
+            
             httpData = postRequestWithUrlAndDataAndHeader(url, json_text, sessionID);
             
             if(!httpData)
@@ -209,7 +212,8 @@ int main(int argc, char *argv[])
             free(json_text);
             json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
             
-            printf("[DEBUG] JSON:\t %s\n", json_text);
+            // More Debug output
+            //printf("[DEBUG] JSON:\t %s\n", json_text);
             
             free(json_text);
         } else if (strstr(argv[3], "SERVER-HARDWARE-TYPES")) {
@@ -235,8 +239,8 @@ int main(int argc, char *argv[])
         } else if (strstr(argv[3], "NETWORKS")) {
             snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "networks");
         }
-        
-        printf("[DEBUG] URL:\t %s\n", url);
+        // Debug URL output
+        //printf("[DEBUG] URL:\t %s\n", url);
         // Call to HP OneView API
         //httpData = getRequestWithUrlAndHeader(url, sessionID);
         
@@ -247,7 +251,10 @@ int main(int argc, char *argv[])
             printf("[ERROR] No session ID");
             return 1;
         }
-        printf("[DEBUG] OVID:\t  %s\n",sessionID);
+        
+        // Debug OVID output
+        //printf("[DEBUG] OVID:\t  %s\n",sessionID);
+        
         if (strstr(argv[3], "NETWORKS")) {
             snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "ethernet-networks");
             
@@ -373,7 +380,9 @@ int main(int argc, char *argv[])
             printf("[ERROR] No session ID");
             return 1;
         }
-        printf("[DEBUG] OVID:\t  %s\n",sessionID);
+        
+        // DEBUG OVID output
+        //printf("[DEBUG] OVID:\t  %s\n",sessionID);
         if (strstr(argv[3], "SERVER-PROFILES")) {
             snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
             
