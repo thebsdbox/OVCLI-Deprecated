@@ -54,3 +54,13 @@ build/Release/OVCLI
 build/OVCLI.build/Release/OVCLI.build/dgph
 
 OVCLI.xcodeproj/xcuserdata/dan.xcuserdatad/xcschemes/OVCLI.xcscheme
+
+*.plist
+
+*.pbxproj
+
+*.plist
+
+OVCLI.xcodeproj/xcuserdata/dan.xcuserdatad/xcschemes/xcschememanagement.plist
+
+OVCLI.xcodeproj/project.pbxproj

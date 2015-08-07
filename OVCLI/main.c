@@ -12,11 +12,12 @@
 #include "jansson.h"
 
 
-#include "OVSessionID.h"
+#include "OVUtils.h"
 #include "OVHttps.h"
 #include "OVOutput.h" // Contains the debug option
 
 #include "OVShow.h"
+#include "OVCreate.h"
 
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
@@ -40,10 +41,9 @@ int valid_digit(char *ip_str)
 int is_valid_ip(char *ip_str)
 {
     // Additional code to copy the string so the original stays intact
-    char *tempString = calloc(strlen(ip_str)+1, sizeof(char));
+    char *ptr, *tempString = calloc(strlen(ip_str)+1, sizeof(char));
     strcpy(tempString, ip_str);
     int num, dots = 0;
-    char *ptr;
     
     if (tempString == NULL)
         return 0;
@@ -84,6 +84,14 @@ int is_valid_ip(char *ip_str)
 int main(int argc, char *argv[])
 {
     
+    // Check for Debug Mode
+    if (getenv("OV_DEBUG")) {
+        debug = 1; // debug mode enabled
+    } else {
+        debug = 0; // debug mode disabled
+    }
+
+    
     // Peform an initial check to see what parameters have been passed
     char path[100];
     if (argc >1) {
@@ -99,12 +107,6 @@ int main(int argc, char *argv[])
     is_valid_ip(argv[1])? printf("Valid\n"): printf("Not valid\n");
     
     
-    // Check for Debug Mode
-    if (getenv("OV_DEBUG")) {
-        debug = 1; // debug mode enabled
-    } else {
-        debug = 0; // debug mode disabled
-    }
 
     
     char url[URL_SIZE];
@@ -112,12 +114,14 @@ int main(int argc, char *argv[])
     json_t *root;
     json_error_t error;
 
+    // Determine the action to be executed
 
     if (strstr(argv[2], "LOGIN")) {
+        // Login to HP OneView
         ovLogin(argv, path);
-        return 0;        
+        return 0;
     } else if (strstr(argv[2], "SHOW")) {
-        
+        // Show/Query information from HP OneView
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
             printf("[ERROR] No session ID");
@@ -132,60 +136,7 @@ int main(int argc, char *argv[])
             printf("[ERROR] No session ID");
             return 1;
         }
-        
-        // Debug output
-        //printf("[DEBUG] OVID:\t  %s\n",sessionID);
-        
-        
-        if (strstr(argv[3], "SERVER-PROFILES")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
-            root = json_pack("{s:s, s:s, s:s, s:s}","type", "ServerProfileV4", "name", argv[4], "serverHardwareTypeUri", argv[5], "enclosureGroupUri", argv[6]);
-            char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
-            
-            // Debug output
-            //printf("[DEBUG] URL:\t %s\n", url);
-            // Call to HP OneView API
-            
-            httpData = postRequestWithUrlAndDataAndHeader(url, json_text, sessionID);
-            
-            if(!httpData)
-                return 1;
-            
-            free(json_text);
-            json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-            
-            // More Debug output
-            //printf("[DEBUG] JSON:\t %s\n", json_text);
-            
-            free(json_text);
-        } else if (strstr(argv[3], "SERVER-HARDWARE-TYPES")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-hardware-types");
-        } else if (strstr(argv[3], "ENCLOSURE-GROUPS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "enclosure-groups");
-            // Comprehensive json needs creating for the Enlcosure Group type, Including details for all eight interconnect Bays
-            root = json_pack("{s:s, s:s, s:s, s:[{s:i, s:s}, \
-                             {s:i, s:s}, {s:i, s:s}, \
-                             {s:i, s:s}, {s:i, s:s}, \
-                             {s:i, s:s}, {s:i, s:s}, \
-                             {s:i, s:s},]}","type", "EnclosureGroupV2", "name", argv[4], "stackingMode", "Enclosure", "interconnectBayMappings", "interconnectBay", 1, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 2, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 3, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 4, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 5, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 6, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 7, "logicalInterconnectGroupUri", argv[5], "interconnectBay", 8, "logicalInterconnectGroupUri", argv[5]);
-            char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
-            //printf("[DEBUG] URL:\t %s\n", url);
-            // Call to HP OneView API
-            httpData = postRequestWithUrlAndDataAndHeader(url, json_text, sessionID);
-            free(json_text);
-            json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-
-            //printf("[DEBUG] JSON:\t %s\n", json_text);
-
-            free(json_text);
-        } else if (strstr(argv[3], "NETWORKS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "networks");
-        }
-        // Debug URL output
-        //printf("[DEBUG] URL:\t %s\n", url);
-        // Call to HP OneView API
-        //httpData = getRequestWithUrlAndHeader(url, sessionID);
-        
+        ovCreate(sessionID, argv);
     } else if (strstr(argv[2], "COPY")) {
     
         char *sessionID = readSessionIDforHost(path);

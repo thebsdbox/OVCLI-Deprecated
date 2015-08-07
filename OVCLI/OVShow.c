@@ -9,6 +9,7 @@
 // OneView headers
 #include "OVShow.h"
 #include "OVHttps.h"
+#include "OVUtils.h"
 // Json Processing
 #include "jansson.h"
 // C libraries
@@ -20,12 +21,6 @@
  ovShow Method takes a show type (i.e. server profiles or networks), and a show method (such as JSON)
  
  */
-
-
-void createURL(char urlString[], char *address, char *url)
-{
-    snprintf(urlString, 256, "https://%s/rest/%s", address, url);
-}
 
 int ovShow(char *sessionID, int argumentCount, char *argument[])
 {
@@ -94,7 +89,7 @@ int ovShow(char *sessionID, int argumentCount, char *argument[])
         
         
         if (strstr(queryType, "RAW")) {
-            char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
+            char *json_text = json_dumps(root, JSON_ENSURE_ASCII);
             printf("%s\n", json_text);
             free(json_text);
             return 0;

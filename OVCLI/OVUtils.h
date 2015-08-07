@@ -22,3 +22,5 @@ char* readSessionID(void); // return the session ID as a string from ~/.sessionI
 
 int writeSessionIDforHost(const char *sessionID, const char *host);
 char* readSessionIDforHost(const char *host);
+int ovLogin(char *argument[], char *path);
+void createURL(char urlString[], char *address, char *url);
