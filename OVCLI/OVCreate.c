@@ -47,7 +47,11 @@ int ovCreate (char *sessionID, char *argument[])
                          {s:i, s:s}, {s:i, s:s}, \
                          {s:i, s:s}, {s:i, s:s}, \
                          {s:i, s:s}, {s:i, s:s}, \
-                         {s:i, s:s},]}","type", "EnclosureGroupV2", "name", argument[4], "stackingMode", "Enclosure", "interconnectBayMappings", "interconnectBay", 1, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 2, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 3, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 4, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 5, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 6, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 7, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 8, "logicalInterconnectGroupUri", argument[5]);
+                         {s:i, s:s},]}",         \
+                         "type", "EnclosureGroupV2",
+                         "name", argument[4], \
+                         "stackingMode", "Enclosure", \
+                         "interconnectBayMappings", "interconnectBay", 1, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 2, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 3, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 4, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 5, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 6, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 7, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 8, "logicalInterconnectGroupUri", argument[5]);
         char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
 
         
@@ -59,8 +63,24 @@ int ovCreate (char *sessionID, char *argument[])
         
         free(json_text);
     } else if (strstr(argument[3], "NETWORKS")) {
-        createURL(urlString, oneViewAddress, "networks");
-
+        char *vlan = argument[5];
+        char *purpose = argument[6];
+        char *name = argument[4];
+        createURL(urlString, oneViewAddress, "ethernet-networks");
+        root = json_pack("{s:s, s:s, s:s, s:b, s:b, s:s, s:s, s:n}", \
+                         "vlanId", vlan,                      \
+                         "purpose" , purpose,                    \
+                         "name" , name,                       \
+                         "smartLink" , JSON_TRUE,                   \
+                         "privateNetwork" , JSON_FALSE,              \
+                         "ethernetNetworkType" , "Tagged",           \
+                         "type" , "ethernet-networkV2" ,    \
+                         "connectionTemplateUri" , "");
+        char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
+        
+        
+        httpData = postRequestWithUrlAndDataAndHeader(urlString, json_text, sessionID);
+        free(json_text);
     } else {
         printCreateHelp();
     }

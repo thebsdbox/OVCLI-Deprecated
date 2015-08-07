@@ -119,6 +119,12 @@ char *postRequestWithUrlAndDataAndHeader(const char *url, const char *postData, 
             if (getenv("OV_DEBUG"))
                 printf(ANSI_COLOR_GREEN"[DEBUG] POST Accepted\n"ANSI_COLOR_RESET);
             break;
+        case 400:
+            if (getenv("OV_DEBUG"))
+                printf(ANSI_COLOR_RED "[DEBUG]" ANSI_COLOR_RESET " Malformed request something in the JSON is broken");
+                if (data)
+                    printf("%s", data);
+            break;
         case 401:
             if (getenv("OV_DEBUG"))
                 printf(ANSI_COLOR_RED "[DEBUG]" ANSI_COLOR_RESET " POST Failure (try logging back in) \n");
