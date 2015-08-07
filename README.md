@@ -18,6 +18,21 @@ OVCLI 10.0.0.1 SHOW SERVER-PROFILES URI
 /rest/server-profiles/dd87433e-c564-4381-8542-7e9cf521b8c0  DEV
 /rest/server-profiles/d75a1d9e-8bc4-4ee3-9fa8-3246ba71f5db  PROD
 ```
+Create a Network
+
+```
+OVCLI 10.0.0.1 CREATE NETWORKS WEB 101 General
+OVCLI 10.0.0.1 CREATE NETWORKS APP 102 General
+OVCLI 10.0.0.1 CREATE NETWORKS DB 103 General
+```
+
+List Networks
+```
+OVCLI 10.0.0.1 SHOW NETWORKS FIELDS name
+WEB
+APP
+DB
+```
 
 
 More info to follow
