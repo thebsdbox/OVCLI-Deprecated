@@ -104,7 +104,13 @@ int main(int argc, char *argv[])
         fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
         return 2;
     }
-    is_valid_ip(argv[1])? printf("Valid\n"): printf("Not valid\n");
+    /*
+    if (is_valid_ip(argv[1])) {
+        fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n\n", argv[0]);
+        fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
+        return 2;
+    }*/
+    //is_valid_ip(argv[1])? printf("Valid\n"): printf("Not valid\n");
     
     
 
