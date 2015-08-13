@@ -34,6 +34,14 @@ APP
 DB
 ```
 
+Clone a Server Profile 50 times
+```
+OVCLI 10.0.0.1 CLONE SERVER-PROFILES /rest/server-profiles/dd87433e-c564-4381-8542-7e9cf521b8c0 50
+DEV_0
+DEV_1
+...
+DEV_50
+```
 
 More info to follow
 ...

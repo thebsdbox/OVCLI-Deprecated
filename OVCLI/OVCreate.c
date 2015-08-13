@@ -57,16 +57,14 @@ int ovCreate (char *sessionID, char *argument[])
         
         httpData = postRequestWithUrlAndDataAndHeader(urlString, json_text, sessionID);
         free(json_text);
-        json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-        
-        //printf("[DEBUG] JSON:\t %s\n", json_text);
-        
-        free(json_text);
+
     } else if (strstr(argument[3], "NETWORKS")) {
         char *vlan = argument[5];
         char *purpose = argument[6];
         char *name = argument[4];
         createURL(urlString, oneViewAddress, "ethernet-networks");
+        
+        // Build up the JSON to create a new network based upon vlan / name and the network purpose
         root = json_pack("{s:s, s:s, s:s, s:b, s:b, s:s, s:s, s:n}", \
                          "vlanId", vlan,                      \
                          "purpose" , purpose,                    \
