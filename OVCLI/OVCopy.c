@@ -19,12 +19,28 @@
 int ovCopy (char *sessionID, char *argument[])
 {
     
+    char urlString[256]; // Used to hold a full URL
+    char path[256]; // Used to hold path to a second session file
+
+        // Check Arguments before continuing
+        if (!sessionID) {
+            return 1;
+        }
+
     
-    if (strstr(argv[3], "NETWORKS")) {
-        snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "ethernet-networks");
+    char *oneViewAddress = argument[1]; // IP Address of HP OneView
+    char *copyType = argument[3]; // Type of information to show
+    // char *queryType = argument[4]; // Type of Query to show
+    char *httpData; // Contains all fo the data returned from a http request
+    json_t *root; // Contains all of the json data once processed by jansson
+    json_error_t error; // Used as a passback for error data during json processing
+    
+    if (strstr(copyType, "NETWORKS")) {
+        createURL(urlString, oneViewAddress, "ethernet-networks");
+
         
         // Call to HP OneView API
-        httpData = getRequestWithUrlAndHeader(url, sessionID);
+        httpData = getRequestWithUrlAndHeader(urlString, sessionID);
         
         if(!httpData)
             return 1;
@@ -39,19 +55,18 @@ int ovCopy (char *sessionID, char *argument[])
             json_array_foreach(memberArray, index, network) {
                 const char *uri = json_string_value(json_object_get(network, "uri"));
                 if (uri != NULL) {
-                    if (strstr(uri, argv[4])) {
+                    if (strstr(uri, argument[4])) {
                         // Remove bits
                         //json_object_del(network, "uri");
                         json_object_del(network, "eTag");
                         json_object_del(network, "modified");
                         json_object_del(network, "created");
                         json_object_del(network, "connectionTemplateUri");
-                        
-                        snprintf(url, URL_SIZE, URL_FORMAT, argv[5], "ethernet-networks");
-                        sprintf(path, "/.%s_ov",argv[5]);
+                        createURL(urlString, argument[5], "ethernet-networks");
+                        sprintf(path, "/.%s_ov",argument[5]);
                         
                         sessionID = readSessionIDforHost(path);
-                        httpData = postRequestWithUrlAndDataAndHeader(url, json_dumps(network, JSON_ENSURE_ASCII), sessionID);
+                        httpData = postRequestWithUrlAndDataAndHeader(urlString, json_dumps(network, JSON_ENSURE_ASCII), sessionID);
                         
                         if(!httpData)
                             return 1;
@@ -61,11 +76,11 @@ int ovCopy (char *sessionID, char *argument[])
             }
         }
         
-    } else if (strstr(argv[3], "SERVER-PROFILES")) {
-        snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
+    } else if (strstr(copyType, "SERVER-PROFILES")) {
         
+        createURL(urlString, oneViewAddress, "server-profiles");
         // Call to HP OneView API
-        httpData = getRequestWithUrlAndHeader(url, sessionID);
+        httpData = getRequestWithUrlAndHeader(urlString, sessionID);
         
         if(!httpData)
             return 1;
@@ -82,7 +97,7 @@ int ovCopy (char *sessionID, char *argument[])
             json_array_foreach(memberArray, index, serverProfile) {
                 const char *uri = json_string_value(json_object_get(serverProfile, "uri"));
                 if (uri != NULL) {
-                    if (strstr(uri, argv[4])) {
+                    if (strstr(uri, argument[4])) {
                         
                         json_object_del(serverProfile, "uri");
                         json_object_del(serverProfile, "serialNumber");
@@ -115,14 +130,14 @@ int ovCopy (char *sessionID, char *argument[])
                         // sprintf(name, "%s_%d",profileName, i);
                         //  printf("%s\n", name);
                         // json_string_set( json_object_get(serverProfile, "name"), name);
-                        json_string_set(json_object_get(serverProfile, "enclosureGroupUri"), argv[6]);
-                        json_string_set(json_object_get(serverProfile, "serverHardwareTypeUri"), argv[7]);
+                        json_string_set(json_object_get(serverProfile, "enclosureGroupUri"), argument[6]);
+                        json_string_set(json_object_get(serverProfile, "serverHardwareTypeUri"), argument[7]);
                         
-                        snprintf(url, URL_SIZE, URL_FORMAT, argv[5], "server-profiles");
-                        sprintf(path, "/.%s_ov",argv[5]);
+                        createURL(urlString, argument[5], "ethernet-networks");
+                        sprintf(path, "/.%s_ov",argument[5]);
                         
                         sessionID = readSessionIDforHost(path);
-                        httpData = postRequestWithUrlAndDataAndHeader(url, json_dumps(serverProfile, JSON_ENSURE_ASCII), sessionID);
+                        httpData = postRequestWithUrlAndDataAndHeader(urlString, json_dumps(serverProfile, JSON_ENSURE_ASCII), sessionID);
                         
                         if(!httpData)
                             return 1;
@@ -135,9 +150,6 @@ int ovCopy (char *sessionID, char *argument[])
             }
         }
 
-}
-
-void printCopyHelp()
-{
-    
+    }
+    return 0;
 }

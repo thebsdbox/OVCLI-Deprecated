@@ -18,6 +18,7 @@
 
 #include "OVShow.h"
 #include "OVCreate.h"
+#include "OVCopy.h"
 
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
@@ -83,6 +84,7 @@ int is_valid_ip(char *ip_str)
 
 int main(int argc, char *argv[])
 {
+    char *oneViewAddress;
     
     // Check for Debug Mode
     if (getenv("OV_DEBUG")) {
@@ -95,29 +97,28 @@ int main(int argc, char *argv[])
     // Peform an initial check to see what parameters have been passed
     char path[100];
     if (argc >1) {
-        sprintf(path, "/.%s_ov",argv[1]);
+        oneViewAddress = argv[1];
+        if (is_valid_ip(oneViewAddress)) {
+            // Create a string based upon the path to the sessionID
+            sprintf(path, "/.%s_ov",oneViewAddress);
+        } else {
+            printMessage(YELLOW, "DEBUG", "Invalid IP Address");
+            return 1;
+        }
     }
     if(argc < 3)
     {
         printMessage(YELLOW, "DEBUG", "No parameters passed");
         fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n\n", argv[0]);
         fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
-        return 2;
+        return 1;
     }
-    /*
-    if (is_valid_ip(argv[1])) {
-        fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n\n", argv[0]);
-        fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
-        return 2;
-    }*/
-    //is_valid_ip(argv[1])? printf("Valid\n"): printf("Not valid\n");
-    
-    
+
 
     
     char url[URL_SIZE];
     char *httpData;
-    json_t *root;
+    json_t *root = NULL;
     json_error_t error;
 
     // Determine the action to be executed
@@ -130,30 +131,33 @@ int main(int argc, char *argv[])
         // Show/Query information from HP OneView
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
-            printf("[ERROR] No session ID");
+            printf("[ERROR] No session ID\n");
             return 1;
         }
         ovShow(sessionID, argc, argv);
-        return 0;
+        return 0; // return sucess
 
     } else if (strstr(argv[2], "CREATE")) {
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
-            printf("[ERROR] No session ID");
+            printf("[ERROR] No session ID\n");
             return 1;
         }
         ovCreate(sessionID, argv);
+        return 0; // Return success
     } else if (strstr(argv[2], "COPY")) {
     
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
-            printf("[ERROR] No session ID");
+            printf("[ERROR] No session ID\n");
             return 1;
         }
+        ovCopy(sessionID, argv);
+        return 0; //return sucess
         
-        // Debug OVID output
+        // Debug OVID outpu
         //printf("[DEBUG] OVID:\t  %s\n",sessionID);
-        
+        /*
         if (strstr(argv[3], "NETWORKS")) {
             snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "ethernet-networks");
             
@@ -270,7 +274,8 @@ int main(int argc, char *argv[])
             }
             
         }
-
+*/
+    
         
         
     } else if (strstr(argv[2], "CLONE")) {
@@ -368,14 +373,6 @@ int main(int argc, char *argv[])
             
         }
     }
-    
-    if(!root)
-    {
-        fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
-        return 1;
-    }
 
-
-    json_decref(root);
     return 0;
 }
