@@ -111,6 +111,10 @@ int main(int argc, char *argv[])
         printMessage(YELLOW, "DEBUG", "No parameters passed");
         fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n\n", argv[0]);
         fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
+        //Print the relevant helps
+        ovCreatePrintHelp();
+        ovShowPrintHelp();
+        ovCopyPrintHelp();
         return 1;
     }
 
