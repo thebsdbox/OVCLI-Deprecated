@@ -17,10 +17,18 @@
 
 #endif /* defined(__OVCLI__OVSessionID__) */
 
+// Write Session ID strings to Home Directory
 int writeSessionID(const char *); // Write the session ID to ~/.sessionID
+int writeSessionIDforHost(const char *sessionID, const char *host);
+int writeDataToFile(const char *data, const char *filename);
+
+
+//Read the Session IDs stored in the Home Directory
+char* readSessionIDforHost(const char *host);
 char* readSessionID(void); // return the session ID as a string from ~/.sessionID (returns NULL in error)
 
-int writeSessionIDforHost(const char *sessionID, const char *host);
-char* readSessionIDforHost(const char *host);
+// Login function
 int ovLogin(char *argument[], char *path);
+
+// URL Generator for restAPI paths..
 void createURL(char urlString[], char *address, char *url);

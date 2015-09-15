@@ -143,5 +143,17 @@ int ovShow(char *sessionID, int argumentCount, char *argument[])
 
     // Should probably re-address the return value at a later time
     return 0;
+}
 
+void ovShowPrintHelp()
+{
+    printf("\n OVCLI xxx.xxx.xxx.xxx SHOW <TYPE> <OUTPUT>");
+    printf("\n <OUTPUT>");
+    printf("\n\t RAW - raw JSON");
+    printf("\n\t PRETTY - readable JSON");
+    printf("\n\t URI - prints NAME and URI fields");
+    printf("\n\t FIELDS <FIELD 1> <FIELD 2> <FIELD 3>");
+    printf("\n <TYPE>");
+    printf("\n\t NETWORKS <OUTPUT>");
+    printf("\n\t SERVER-PROFILES <OUTPUT>");
 }

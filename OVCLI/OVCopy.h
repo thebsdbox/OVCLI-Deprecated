@@ -14,4 +14,4 @@
 #endif /* defined(__OVCLI__OVCopy__) */
 
 int ovCopy (char *sessionID, char *argument[]);
-void printCopyHelp();
+void ovCopyPrintHelp(); // Default printing help function

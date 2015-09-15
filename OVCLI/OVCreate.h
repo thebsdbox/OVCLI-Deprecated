@@ -14,4 +14,4 @@
 #endif /* defined(__OVCLI__OVCreate__) */
 
 int ovCreate (char *sessionID, char *argument[]);
-void printCreateHelp();
+void ovCreatePrintHelp(); // Default printing help function

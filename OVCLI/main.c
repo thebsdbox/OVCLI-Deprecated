@@ -19,6 +19,7 @@
 #include "OVShow.h"
 #include "OVCreate.h"
 #include "OVCopy.h"
+#include "OVMessageBus.h"
 
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
@@ -376,6 +377,13 @@ int main(int argc, char *argv[])
             }
             
         }
+    } else if (strstr(argv[2], "MESSAGEBUS")) {
+        char *sessionID = readSessionIDforHost(path);
+        if (!sessionID) {
+            printf("[ERROR] No session ID\n");
+            return 1;
+        }
+        ovMessageBusWatch(sessionID, argv, path);
     }
 
     return 0;

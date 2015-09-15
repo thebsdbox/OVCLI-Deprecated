@@ -17,24 +17,28 @@ void createURL(char urlString[], char *address, char *url)
     snprintf(urlString, 256, "https://%s/rest/%s", address, url);
 }
 
-
-int writeSessionIDforHost(const char *sessionID, const char *host)
+int writeDataToFile(const char *data, const char *filename)
 {
     FILE *fp;
     char filepath[1000]; //large file path
     strcpy(filepath, getenv("HOME")); // copy in the $HOME env into the string
-    strcat(filepath, host); // Append the SessionID path
+    strcat(filepath, filename); // Append the filename to path
     
     fp = fopen(filepath, "w");
     if (fp) { /*file opened succesfully */
-        fputs(sessionID, fp);
+        fputs(data, fp);
         fclose(fp);
     } else {
+        printf("Not logged into HP OneView host\n");
         printf("Error opening file %s \n", filepath);
         return -1;
     }
     
     return 0;
+}
+int writeSessionIDforHost(const char *sessionID, const char *host)
+{
+    return writeDataToFile(sessionID, host);
 }
 
 int writeSessionID(const char *sessionID)
@@ -85,8 +89,10 @@ int ovLogin(char *argument[], char *path)
     root = json_pack("{s:s, s:s}", "userName", username, "password", password);
     // dump it as a string to pass to the curl libs
     char *json_text = json_dumps(root, JSON_ENCODE_ANY);
+    
     //build URL
-    snprintf(urlString, 256, "https://%s/rest/%s", oneViewAddress, "login-sessions");
+    createURL(urlString, oneViewAddress, "login-sessions");
+//    snprintf(urlString, 256, "https://%s/rest/%s", oneViewAddress, "login-sessions");
     
     if (getenv("OV_DEBUG"))
         printf("[INFO] URL:\t %s\n", urlString);

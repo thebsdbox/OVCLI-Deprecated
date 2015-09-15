@@ -129,11 +129,15 @@ char *postRequestWithUrlAndDataAndHeader(const char *url, const char *postData, 
             if (getenv("OV_DEBUG"))
                 printf(ANSI_COLOR_RED "[DEBUG]" ANSI_COLOR_RESET " POST Failure (try logging back in) \n");
             break;
+        case 409:
+            if (getenv("OV_DEBUG"))
+                printf(ANSI_COLOR_RED "[DEBUG]" ANSI_COLOR_RESET " Error 409 \n");
+            break;
         default:
             break;
     }
     
-    if(code > 300)
+    if(code > 500)
     {
         if (getenv("OV_DEBUG"))
             fprintf(stderr, ANSI_COLOR_RED"[ERROR]" ANSI_COLOR_RESET" server responded with code %ld\n", code);

@@ -43,15 +43,21 @@ int ovCreate (char *sessionID, char *argument[])
         createURL(urlString, oneViewAddress, "enclosure-groups");
 
         // Comprehensive json needs creating for the Enlcosure Group type, Including details for all eight interconnect Bays
-        root = json_pack("{s:s, s:s, s:s, s:[{s:i, s:s}, \
-                         {s:i, s:s}, {s:i, s:s}, \
-                         {s:i, s:s}, {s:i, s:s}, \
-                         {s:i, s:s}, {s:i, s:s}, \
-                         {s:i, s:s},]}",         \
+        root = json_pack("{s:s, s:s, s:s, s:[{s:i, s:s}, {s:i, s:s}     \
+                                             {s:i, s:s}, {s:i, s:s},    \
+                                             {s:i, s:s}, {s:i, s:s},    \
+                                             {s:i, s:s}, {s:i, s:s},]}",\
                          "type", "EnclosureGroupV2",
                          "name", argument[4], \
                          "stackingMode", "Enclosure", \
-                         "interconnectBayMappings", "interconnectBay", 1, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 2, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 3, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 4, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 5, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 6, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 7, "logicalInterconnectGroupUri", argument[5], "interconnectBay", 8, "logicalInterconnectGroupUri", argument[5]);
+                         "interconnectBayMappings", "interconnectBay", 1, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 2, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 3, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 4, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 5, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 6, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 7, "logicalInterconnectGroupUri", argument[5], \
+                                                    "interconnectBay", 8, "logicalInterconnectGroupUri", argument[5]);
         char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
 
         
@@ -66,13 +72,13 @@ int ovCreate (char *sessionID, char *argument[])
         
         // Build up the JSON to create a new network based upon vlan / name and the network purpose
         root = json_pack("{s:s, s:s, s:s, s:b, s:b, s:s, s:s, s:n}", \
-                         "vlanId", vlan,                      \
-                         "purpose" , purpose,                    \
-                         "name" , name,                       \
-                         "smartLink" , JSON_TRUE,                   \
+                         "vlanId", vlan,                             \
+                         "purpose" , purpose,                        \
+                         "name" , name,                              \
+                         "smartLink" , JSON_TRUE,                    \
                          "privateNetwork" , JSON_FALSE,              \
                          "ethernetNetworkType" , "Tagged",           \
-                         "type" , "ethernet-networkV2" ,    \
+                         "type" , "ethernet-networkV2" ,             \
                          "connectionTemplateUri" , "");
         char *json_text = json_dumps(root, JSON_ENSURE_ASCII); //4 is close to a tab
         
@@ -80,19 +86,16 @@ int ovCreate (char *sessionID, char *argument[])
         httpData = postRequestWithUrlAndDataAndHeader(urlString, json_text, sessionID);
         free(json_text);
     } else {
-        printCreateHelp();
+        ovCreatePrintHelp();
     }
      return  0;
 }
 
-void printCreateHelp()
+void ovCreatePrintHelp()
 {
     // Display the help (to be cleared at a later date
-    printf("\n SHOW COMMANDS\n------------\n");
-    printf(" SERVER-PROFILES - List server profiles\n");
-    printf(" SERVER-HARDWARE - list detected physical hardware\n");
-    printf(" SERVER-HARDWARE-TYPES - List discovered hardware types\n");
-    printf(" ENCLOSURE-GROUPS - List defined enclosure groups\n");
-    printf(" NETWORKS - List defined networks\n");
-    printf(" INTERCONNECTS - List uplinks\n\n");
+    printf("\n OVCLI xxx.xxx.xxx.xxx CREATE <TYPE> <...> <...>");
+    printf("\n <TYPE>");
+    printf("\n\t NETWORKS <NETWORK-URI> <DESTINATION ONEVIEW>");
+    printf("\n\t SERVER-PROFILES <SERVER-PROFILE URI> <DESTINATION ONEVIEW>");
 }

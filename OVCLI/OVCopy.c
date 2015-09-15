@@ -153,3 +153,12 @@ int ovCopy (char *sessionID, char *argument[])
     }
     return 0;
 }
+
+void ovCopyPrintHelp()
+{
+    printf("\n OVCLI xxx.xxx.xxx.xxx COPY <TYPE> <...> <...>");
+    printf("\n <TYPE>");
+    printf("\n\t NETWORKS <NETWORK-URI> <DESTINATION ONEVIEW>");
+    printf("\n\t SERVER-PROFILES <SERVER-PROFILE URI> <DESTINATION ONEVIEW>");
+
+}

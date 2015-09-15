@@ -14,3 +14,4 @@
 #endif /* defined(__OVCLI__OVShow__) */
 
 int ovShow(char *sessionID, int argumentCount, char *argument[]);
+void ovShowPrintHelp(); // Default printing help function
