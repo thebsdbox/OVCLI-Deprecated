@@ -9,7 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <assert.h>
+#include <ctype.h>
+
+
+// JSON
 #include "jansson.h"
+
 
 
 #include "OVUtils.h"
@@ -20,6 +26,9 @@
 #include "OVCreate.h"
 #include "OVCopy.h"
 #include "OVMessageBus.h"
+
+
+
 
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
@@ -110,17 +119,21 @@ int main(int argc, char *argv[])
     if(argc < 3)
     {
         printMessage(YELLOW, "DEBUG", "No parameters passed");
-        fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n\n", argv[0]);
-        fprintf(stderr, "HP OneView CLI Utility 2015.\n\n");
+        fprintf(stderr, "usage: %s ADDRESS COMMAND <parameters>\n", argv[0]);
+        // Somewhat over the top logo
+        fprintf(stderr, " \
+                _   _ ____     ___           __     ___\n\
+                | | | |  _ \\   / _ \\ _ __   __\\ \\   / (_) _____      __\n\
+                | |_| | |_) | | | | | '_ \\ / _ \\ \\ / /| |/ _ \\ \\ /\\ / /\n\
+                |  _  |  __/  | |_| | | | |  __/\\ V / | |  __/\\ V  V /\n\
+                |_| |_|_|      \\___/|_| |_|\\___| \\_/  |_|\\___| \\_/\\_/  \n\n");
         //Print the relevant helps
         ovCreatePrintHelp();
         ovShowPrintHelp();
         ovCopyPrintHelp();
         return 1;
     }
-
-
-    
+ 
     char url[URL_SIZE];
     char *httpData;
     json_t *root = NULL;
@@ -128,7 +141,7 @@ int main(int argc, char *argv[])
 
     // Determine the action to be executed
 
-    if (strstr(argv[2], "LOGIN")) {
+    if (stringMatch(argv[2], "LOGIN")) {
         // Login to HP OneView
         ovLogin(argv, path);
         return 0;
@@ -382,9 +395,111 @@ int main(int argc, char *argv[])
         if (!sessionID) {
             printf("[ERROR] No session ID\n");
             return 1;
+        } else if (argc < 4) {
+            printf("[ERROR] Incorrect usage\n");
+            return 1;
         }
-        ovMessageBusWatch(sessionID, argv, path);
+        if (strstr(argv[3], "GENERATE")) {
+            ovMessageBusGenerate(sessionID, argv);
+        }
+        
+        if (strstr(argv[3], "CERT")) {
+           ovMessageBusWatch(sessionID, argv, path);
+        }
+        
+        if (stringMatch(argv[3], "LISTEN")) {
+            ovMessageBusListen(argv, path);
+        }
     }
 
     return 0;
 }
+
+/*
+ static void dump_row(long count, int numinrow, int *chs)
+ {
+ int i;
+ 
+ printf("%08lX:", count - numinrow);
+ 
+ if (numinrow > 0) {
+ for (i = 0; i < numinrow; i++) {
+ if (i == 8) {
+ printf(" :");
+ }
+ printf(" %02X", chs[i]);
+ }
+ for (i = numinrow; i < 16; i++) {
+ if (i == 8) {
+ printf(" :");
+ }
+ printf("   ");
+ }
+ printf("  ");
+ for (i = 0; i < numinrow; i++) {
+ if (isprint(chs[i])) {
+ printf("%c", chs[i]);
+ } else {
+ printf(".");
+ }
+ }
+ }
+ printf("\n");
+ }
+ 
+ static int rows_eq(int *a, int *b)
+ {
+ int i;
+ 
+ for (i=0; i<16; i++)
+ if (a[i] != b[i]) {
+ return 0;
+ }
+ 
+ return 1;
+ }
+ 
+ void amqp_dump(void const *buffer, size_t len)
+ {
+ unsigned char *buf = (unsigned char *) buffer;
+ long count = 0;
+ int numinrow = 0;
+ int chs[16];
+ int oldchs[16] = {0};
+ int showed_dots = 0;
+ size_t i;
+ 
+ for (i = 0; i < len; i++) {
+ int ch = buf[i];
+ 
+ if (numinrow == 16) {
+ int i;
+ 
+ if (rows_eq(oldchs, chs)) {
+ if (!showed_dots) {
+ showed_dots = 1;
+ printf("          .. .. .. .. .. .. .. .. : .. .. .. .. .. .. .. ..\n");
+ }
+ } else {
+ showed_dots = 0;
+ dump_row(count, numinrow, chs);
+ }
+ 
+ for (i=0; i<16; i++) {
+ oldchs[i] = chs[i];
+ }
+ 
+ numinrow = 0;
+ }
+ 
+ count++;
+ chs[numinrow++] = ch;
+ }
+ 
+ dump_row(count, numinrow, chs);
+ 
+ if (numinrow != 0) {
+ printf("%08lX:\n", count);
+ }
+ }
+*/
