@@ -36,7 +36,7 @@ int ovMessageBusGenerate(char *sessionID, char *argument[])
     return 0;
 }
 
-int ovMessageBusWatch (char *sessionID, char *argument[], char *path)
+int ovMessageBusCertificates (char *sessionID, char *argument[], char *path)
 {
     
     char urlString[256]; // Used to hold a full URL

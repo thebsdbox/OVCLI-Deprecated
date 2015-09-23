@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
         }
         
         if (strstr(argv[3], "CERT")) {
-           ovMessageBusWatch(sessionID, argv, path);
+           ovMessageBusCertificates(sessionID, argv, path);
         }
         
         if (stringMatch(argv[3], "LISTEN")) {

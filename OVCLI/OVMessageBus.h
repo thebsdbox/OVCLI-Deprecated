@@ -13,6 +13,6 @@
 
 #endif /* defined(__OVCLI__OVMessageBus__) */
 
-int ovMessageBusWatch (char *sessionID, char *argument[], char *path);
+int ovMessageBusCertificates (char *sessionID, char *argument[], char *path);
 int ovMessageBusGenerate(char *sessionID, char *argument[]);
 int ovMessageBusListen(char *argument[], char *path);
