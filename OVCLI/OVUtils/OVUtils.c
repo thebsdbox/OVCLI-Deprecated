@@ -81,6 +81,7 @@ char *readDataFromFile(const char *file)
         fclose(fp);
     } else {
         printf("Error opening file %s \n", filepath);
+        free(sessionID);
         return NULL;
     }
     strcpy(sessionID, buffer);

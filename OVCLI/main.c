@@ -83,7 +83,7 @@ int is_valid_ip(char *ip_str)
         } else
             return 0;
     }
-    
+    free(tempString);
     /* valid IP string must contain 3 dots */
     if (dots != 3)
         return 0;

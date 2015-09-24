@@ -5,17 +5,38 @@
 //  Created by Daniel Finneran on 15/09/2015.
 //  Copyright (c) 2015 Daniel Finneran. All rights reserved.
 //
+// URLs looked through:
+// https://github.com/luvit/openssl/blob/master/openssl/demos/pkcs12/pkwrite.c
+// https://github.com/alanxz/rabbitmq-c/blob/master/examples/amqps_consumer.c
+// https://github.com/alanxz/rabbitmq-c/blob/master/examples/utils.c
+// http://h17007.www1.hp.com/docs/enterprise/servers/oneview1.2/cic-rest/en/content/s_using-SCMB-ci.html
+//
+//
 
-#include <ctype.h>
-
-#include "OVUtils.h"
 #include "OVMessageBus.h"
+
+// OneView Headers
+#include "OVUtils.h"
 #include "OVHttps.h"
+#include "OVMessageBusUtils.h"
+
+// JSON processing Header
 #include "jansson.h"
+
+// Standard Libraries
+#include <ctype.h>
+#include <stdlib.h>
 
 // RabbitMQ
 #include "amqp_ssl_socket.h"
 #include "amqp_framing.h"
+
+uint64_t now_microseconds(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (uint64_t) tv.tv_sec * 1000000 + (uint64_t) tv.tv_usec;
+}
 
 int ovMessageBusGenerate(char *sessionID, char *argument[])
 {
@@ -110,123 +131,149 @@ int ovMessageBusCertificates (char *sessionID, char *argument[], char *path)
 }
 
 
-///// THE BELOW FUNCTIONS WILL BE REMOVED
+#define SUMMARY_EVERY_US 1000000
 
-
-static void dump_row(long count, int numinrow, int *chs)
+static void run(amqp_connection_state_t conn)
 {
-    int i;
+    uint64_t start_time = now_microseconds();
+    int received = 0;
+    int previous_received = 0;
+    uint64_t previous_report_time = start_time;
+    uint64_t next_summary_time = start_time + SUMMARY_EVERY_US;
+    json_t *root; // Contains all of the json data once processed by jansson
+    json_error_t error; // Used as a passback for error data during json processing
     
-    printf("%08lX:", count - numinrow);
+    amqp_frame_t frame;
     
-    if (numinrow > 0) {
-        for (i = 0; i < numinrow; i++) {
-            if (i == 8) {
-                printf(" :");
-            }
-            printf(" %02X", chs[i]);
-        }
-        for (i = numinrow; i < 16; i++) {
-            if (i == 8) {
-                printf(" :");
-            }
-            printf("   ");
-        }
-        printf("  ");
-        for (i = 0; i < numinrow; i++) {
-            if (isprint(chs[i])) {
-                printf("%c", chs[i]);
-            } else {
-                printf(".");
-            }
-        }
-    }
-    printf("\n");
-}
-
-static int rows_eq(int *a, int *b)
-{
-    int i;
+    uint64_t now;
     
-    for (i=0; i<16; i++)
-        if (a[i] != b[i]) {
-            return 0;
-        }
-    
-    return 1;
-}
-
-void amqp_dump(void const *buffer, size_t len)
-{
-    unsigned char *buf = (unsigned char *) buffer;
-    long count = 0;
-    int numinrow = 0;
-    int chs[16];
-    int oldchs[16] = {0};
-    int showed_dots = 0;
-    size_t i;
-    
-    for (i = 0; i < len; i++) {
-        int ch = buf[i];
+    while (1) {
+        amqp_rpc_reply_t ret;
+        amqp_envelope_t envelope;
         
-        if (numinrow == 16) {
-            int i;
+        now = now_microseconds();
+        if (now > next_summary_time) {
+            int countOverInterval = received - previous_received;
+            double intervalRate = countOverInterval / ((now - previous_report_time) / 1000000.0);
+            printf("%d ms: Received %d - %d since last report (%d Hz)\n",
+                   (int)(now - start_time) / 1000, received, countOverInterval, (int) intervalRate);
             
-            if (rows_eq(oldchs, chs)) {
-                if (!showed_dots) {
-                    showed_dots = 1;
-                    printf("          .. .. .. .. .. .. .. .. : .. .. .. .. .. .. .. ..\n");
+            previous_received = received;
+            previous_report_time = now;
+            next_summary_time += SUMMARY_EVERY_US;
+        }
+        
+        amqp_maybe_release_buffers(conn);
+        ret = amqp_consume_message(conn, &envelope, NULL, 0);
+        
+        if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+            if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
+                AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
+                if (AMQP_STATUS_OK != amqp_simple_wait_frame(conn, &frame)) {
+                    return;
                 }
+                
+                if (AMQP_FRAME_METHOD == frame.frame_type) {
+                    switch (frame.payload.method.id) {
+                        case AMQP_BASIC_ACK_METHOD:
+                            /* if we've turned publisher confirms on, and we've published a message
+                             * here is a message being confirmed
+                             */
+                            
+                            break;
+                        case AMQP_BASIC_RETURN_METHOD:
+                            /* if a published message couldn't be routed and the mandatory flag was set
+                             * this is what would be returned. The message then needs to be read.
+                             */
+                        {
+                            amqp_message_t message;
+                            ret = amqp_read_message(conn, frame.channel, &message, 0);
+                            if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+                                return;
+                            }
+                            
+                            amqp_destroy_message(&message);
+                        }
+                            
+                            break;
+                            
+                        case AMQP_CHANNEL_CLOSE_METHOD:
+                            /* a channel.close method happens when a channel exception occurs, this
+                             * can happen by publishing to an exchange that doesn't exist for example
+                             *
+                             * In this case you would need to open another channel redeclare any queues
+                             * that were declared auto-delete, and restart any consumers that were attached
+                             * to the previous channel
+                             */
+                            return;
+                            
+                        case AMQP_CONNECTION_CLOSE_METHOD:
+                            /* a connection.close method happens when a connection exception occurs,
+                             * this can happen by trying to use a channel that isn't open for example.
+                             *
+                             * In this case the whole connection must be restarted.
+                             */
+                            return;
+                            
+                        default:
+                            fprintf(stderr ,"An unexpected method was received %d\n", frame.payload.method.id);
+                            return;
+                    }
+                }
+            }
+            
+        } else {
+            char *body = envelope.message.body.bytes;
+            body[envelope.message.body.len] = '\0'; // Fix the size of the data
+            root = json_loads(body, 0, &error);
+            char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
+            if (!json_text) {
+                printf("%lu vs %zul\n", sizeof(body), envelope.message.body.len);
+                printf("%s\n", body);
             } else {
-                showed_dots = 0;
-                dump_row(count, numinrow, chs);
+                printf("%s\n", json_text);
+                free(json_text);
             }
-            
-            for (i=0; i<16; i++) {
-                oldchs[i] = chs[i];
-            }
-            
-            numinrow = 0;
+
+            amqp_destroy_envelope(&envelope);
         }
         
-        count++;
-        chs[numinrow++] = ch;
-    }
-    
-    dump_row(count, numinrow, chs);
-    
-    if (numinrow != 0) {
-        printf("%08lX:\n", count);
+        received++;
     }
 }
-
-
-///// THE ABOVE FUNCTIONS WILL BE REMOVED
 
 
 int ovMessageBusListen(char *argument[], char *path)
 {
-    char const *hostname;
-    int port, status;
+    // Count the size of arguments passed
+    int count = 0;
+    while (argument[++count] !=NULL);
+    if (count < 3) {
+        return -1;
+    }
+    char *oneViewAddress = argument[1]; // IP Address of HP OneView
+    char *routingKey = argument[4]; // RabbitMQ Routing Key (Search params)
+    
+    
+    int status, port = 5671; // Static port allocation
     amqp_bytes_t queuename;
     amqp_socket_t *socket;
     amqp_connection_state_t conn;
+    // JSON Processing from MessageBus
+    json_t *root; // Contains all of the json data once processed by jansson
+    json_error_t error; // Used as a passback for error data during json processing
 
-    char cacert[150];
-    char cert[150];
-    char key[150];
-    char home[150];
+    // Character arrays for paths to certificates
+    char cacert[250], cert[250], key[250], home[150];
+    
     strcpy(home, getenv("HOME")); // copy in the $HOME env into the string
+    sprintf(cacert, "%s%s_cacert", home, path); // Create the path to the root certificate
+    sprintf(cert, "%s%s_pem", home, path); // Create the path to the certificate for RabbitMQ
+    sprintf(key, "%s%s_key", home, path); // Create the path to the key
 
-    sprintf(cacert, "%s%s_cacert", home, path);
-    sprintf(cert, "%s%s_pem", home, path);
-    sprintf(key, "%s%s_key", home, path);
-
-    hostname = "192.168.0.91";
-    port = 5671;
-
+    // Create connection structure
     conn = amqp_new_connection();
-
+    // Assign a TCP socket to the connection
     socket = amqp_ssl_socket_new(conn);
     if (!socket) {
         printf("Connection failed");
@@ -235,19 +282,17 @@ int ovMessageBusListen(char *argument[], char *path)
 
     status = amqp_ssl_socket_set_cacert(socket, cacert);
     status = amqp_ssl_socket_set_key(socket, cert, key);
-    status = amqp_socket_open(socket, hostname, port);
+    status = amqp_socket_open(socket, oneViewAddress, port);
 
-    amqp_rpc_reply_t x = amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_EXTERNAL, "guest", "guest");
-
-    fprintf(stderr, "%s: %s\n", "Logging in", amqp_error_string2(x.library_error));
+    amqpGetStatus(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_EXTERNAL, "guest", "guest"));
 
     amqp_channel_open(conn, 1);
 
-    x =amqp_get_rpc_reply(conn);
+    amqpGetStatus(amqp_get_rpc_reply(conn));
 
+    // Create a queue localhost to handle the incoming messages
     {
-        amqp_queue_declare_ok_t *r = amqp_queue_declare(conn, 1, amqp_empty_bytes, 0, 0, 0, 1,
-                                                        amqp_empty_table);
+        amqp_queue_declare_ok_t *r = amqp_queue_declare(conn, 1, amqp_empty_bytes, 0, 0, 0, 1, amqp_empty_table);
         amqp_get_rpc_reply(conn);
         queuename = amqp_bytes_malloc_dup(r->queue);
         if (queuename.bytes == NULL) {
@@ -256,44 +301,15 @@ int ovMessageBusListen(char *argument[], char *path)
         }
     }
 
-    amqp_queue_bind(conn, 1,
-                    queuename,
-                    amqp_cstring_bytes("scmb"),
-                    amqp_cstring_bytes("scmb.#"),
-                    amqp_empty_table);
+    amqp_queue_bind(conn, 1, queuename, amqp_cstring_bytes("scmb"), amqp_cstring_bytes(routingKey), amqp_empty_table);
 
-        x =amqp_get_rpc_reply(conn);
-
-    switch (x.reply.id) {
-        case AMQP_CONNECTION_CLOSE_METHOD: {
-            amqp_connection_close_t *m = (amqp_connection_close_t *) x.reply.decoded;
-            fprintf(stderr, "%s: server connection error %d, message: %.*s\n",
-                    "",
-                    m->reply_code,
-                    (int) m->reply_text.len, (char *) m->reply_text.bytes);
-            break;
-        }
-        case AMQP_CHANNEL_CLOSE_METHOD: {
-            amqp_channel_close_t *m = (amqp_channel_close_t *) x.reply.decoded;
-            fprintf(stderr, "%s: server channel error %d, message: %.*s\n",
-                    "",
-                    m->reply_code,
-                    (int) m->reply_text.len, (char *) m->reply_text.bytes);
-            break;
-        }
-        default:
-            fprintf(stderr, "%s: unknown server error, method id 0x%08X\n", "", x.reply.id);
-            break;
-    }
-
-    fprintf(stderr, "%s: %s\n", "Logging in", amqp_error_string2(x.library_error));
-
-
-
+    amqpGetStatus(amqp_get_rpc_reply(conn));
+    
     amqp_basic_consume(conn, 1, queuename, amqp_empty_bytes, 0, 0, 0, amqp_empty_table);
-    x= amqp_get_rpc_reply(conn);
+    
+    amqpGetStatus(amqp_get_rpc_reply(conn));
 
-
+   
     {
         while (1) {
             amqp_rpc_reply_t res;
@@ -319,11 +335,26 @@ int ovMessageBusListen(char *argument[], char *path)
             }
             printf("----\n");
         
-            amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
-        
+            //amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
+            
+            char *body = envelope.message.body.bytes;
+            body[envelope.message.body.len] = '\0'; // Fix the size of the data
+
+            root = json_loads(body, 0, &error);
+            char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
+            if (!json_text) {
+                printf("%s\n", body);
+            } else {
+            printf("%s\n", json_text);
+            }
+            // Tidy up
+            free(json_text);
+            //free(body);
+            json_decref(root);
             amqp_destroy_envelope(&envelope);
         }
     }
+   // run(conn);
     return 0;
 }
 

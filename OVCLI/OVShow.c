@@ -120,11 +120,13 @@ int ovShow(char *sessionID, int argumentCount, char *argument[])
                 json_t *value;
                 json_array_foreach(memberArray, index, value) {
                     for (int i = 5; i< argumentCount; i++) {
-                        const char *fieldObject = json_string_value(json_object_get(value, argument[i]));
-                        if (fieldObject == NULL) {
+                        if (json_is_number(json_object_get(value, argument[i]))) {
+                            printf("%lli \t", json_integer_value(json_object_get(value, argument[i])));
+                        } else if (json_is_string(json_object_get(value, argument[i]))) {
+                            printf("%s \t", json_string_value(json_object_get(value, argument[i])));
+                        } else {
                             printf("\"\" \t"); // If NULL value is returned or Field not found then "" is returned
-                        } else
-                            printf("%s \t", fieldObject);
+                        };
                     }
                     printf(" \n"); // New line
                 }
