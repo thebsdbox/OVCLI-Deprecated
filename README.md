@@ -5,6 +5,20 @@ This is a project that has **slightly** spiralled out of control, however i'm ho
 
 So, **OVCLI** spawned from a number of projects and tools that all wrapped around the use of [HP OneView](http://www.hp.com/go/oneview) and it's APIs. This tool serves as both a tool to learn the OneView [API](http://h17007.www1.hp.com/docs/enterprise/servers/oneview1.2/cic-api/en/api-docs/current/index.html) and a tool to assist in scripting and automating some tasks in the data centre. 
 
+**Building/Compilng**
+
+I've left the object archive files that are inside ./Library/{OS}/ directory so that static compilation will produce an executable that should pretty much run in the majority of places. The two object archives are from the latest builds of both jansson and rabbitMQ (as of SEP/15) and have been compiled on both OS X and Linux. 
+So to install, grab everthing by clicking on the Download Zip button on the right and download the archive of source files and in a terminal window make your way into OVCLI-master/OVCLI and you'll find the build_ovcli.sh shell script. Running this script will result in detecting the Operating System and creating the binary for you. I will produce some pre-compiled binaries for people that don't have a development environment to hand.
+
+```
+| => ./build_ovcli.sh 
+Detected Operating System: Darwin
+Building for OSX
+Compilation Complete, please enjoy
+| => ls -la ./ovcli 
+-rwxr-xr-x  1 dan  staff  163404 25 Sep 12:44 ./ovcli
+``` 
+
 **USAGE** **EXAMPLES**:
 
 Logging into HP OneView
