@@ -169,9 +169,23 @@ int ovMsgBusListen(char *argument[], char *path)
     }
 
     status = amqp_ssl_socket_set_cacert(socket, cacert);
+    if (!socket) {
+        printf("\nError with Certificate Authority Certificate\n");
+        return -1;
+    }
     status = amqp_ssl_socket_set_key(socket, cert, key);
+    if (!socket) {
+        printf("\nError with Key or Certificate\n");
+        return -1;
+    }
     status = amqp_socket_open(socket, oneViewAddress, port);
+    if (!socket) {
+        printf("\nConnection to RabbitMQ Server has failed, check IP or Port\n");
+        return -1;
+    }
 
+    // Wrap AMQP Functions with amqpGetStatus (), which will automatically check if there has been any errors whilst runngin a function
+    // Login to Server using existing connection AMQP_SASL_METHOD_EXTERNAL will use the certificates noted above.
     amqpGetStatus(amqp_login(conn, "/", 0, 131072, 0, AMQP_SASL_METHOD_EXTERNAL, "guest", "guest"));
 
     amqp_channel_open(conn, 1);
@@ -189,15 +203,16 @@ int ovMsgBusListen(char *argument[], char *path)
         }
     }
 
+    // Bind our new queue to the exchange and use a routing Key to (possibly) reduce the amount of messages
     amqp_queue_bind(conn, 1, queuename, amqp_cstring_bytes("scmb"), amqp_cstring_bytes(routingKey), amqp_empty_table);
 
     amqpGetStatus(amqp_get_rpc_reply(conn));
-    
+    // Start consuming messages on the queue
     amqp_basic_consume(conn, 1, queuename, amqp_empty_bytes, 0, 0, 0, amqp_empty_table);
     
     amqpGetStatus(amqp_get_rpc_reply(conn));
 
-   
+   // Process Messages
     {
         while (1) {
             amqp_rpc_reply_t res;
@@ -225,9 +240,12 @@ int ovMsgBusListen(char *argument[], char *path)
         
             //amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
             
+            // Pointer to the data
             char *body = envelope.message.body.bytes;
-            body[envelope.message.body.len] = '\0'; // Fix the size of the data
+            // Place a NULL at the end of the data so that printf will only make use of it like a string
+            body[envelope.message.body.len] = '\0';
 
+            // Parse the text as JSON and then have it INDENTED (readable)
             root = json_loads(body, 0, &error);
             char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
             if (!json_text) {
@@ -237,12 +255,10 @@ int ovMsgBusListen(char *argument[], char *path)
             }
             // Tidy up
             free(json_text);
-            //free(body);
             json_decref(root);
             amqp_destroy_envelope(&envelope);
         }
     }
-   // run(conn);
     return 0;
 }
 
