@@ -38,7 +38,7 @@ uint64_t now_microseconds(void)
     return (uint64_t) tv.tv_sec * 1000000 + (uint64_t) tv.tv_usec;
 }
 
-int ovMessageBusGenerate(char *sessionID, char *argument[])
+int ovMsgBusCertGenerate(char *sessionID, char *argument[])
 {
     char urlString[256]; // Used to hold a full URL
     char *httpData;
@@ -57,7 +57,7 @@ int ovMessageBusGenerate(char *sessionID, char *argument[])
     return 0;
 }
 
-int ovMessageBusCertificates (char *sessionID, char *argument[], char *path)
+int ovMsgBusCertDownload(char *sessionID, char *argument[], char *path)
 {
     
     char urlString[256]; // Used to hold a full URL
@@ -131,119 +131,7 @@ int ovMessageBusCertificates (char *sessionID, char *argument[], char *path)
 }
 
 
-#define SUMMARY_EVERY_US 1000000
-
-static void run(amqp_connection_state_t conn)
-{
-    uint64_t start_time = now_microseconds();
-    int received = 0;
-    int previous_received = 0;
-    uint64_t previous_report_time = start_time;
-    uint64_t next_summary_time = start_time + SUMMARY_EVERY_US;
-    json_t *root; // Contains all of the json data once processed by jansson
-    json_error_t error; // Used as a passback for error data during json processing
-    
-    amqp_frame_t frame;
-    
-    uint64_t now;
-    
-    while (1) {
-        amqp_rpc_reply_t ret;
-        amqp_envelope_t envelope;
-        
-        now = now_microseconds();
-        if (now > next_summary_time) {
-            int countOverInterval = received - previous_received;
-            double intervalRate = countOverInterval / ((now - previous_report_time) / 1000000.0);
-            printf("%d ms: Received %d - %d since last report (%d Hz)\n",
-                   (int)(now - start_time) / 1000, received, countOverInterval, (int) intervalRate);
-            
-            previous_received = received;
-            previous_report_time = now;
-            next_summary_time += SUMMARY_EVERY_US;
-        }
-        
-        amqp_maybe_release_buffers(conn);
-        ret = amqp_consume_message(conn, &envelope, NULL, 0);
-        
-        if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-            if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
-                AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
-                if (AMQP_STATUS_OK != amqp_simple_wait_frame(conn, &frame)) {
-                    return;
-                }
-                
-                if (AMQP_FRAME_METHOD == frame.frame_type) {
-                    switch (frame.payload.method.id) {
-                        case AMQP_BASIC_ACK_METHOD:
-                            /* if we've turned publisher confirms on, and we've published a message
-                             * here is a message being confirmed
-                             */
-                            
-                            break;
-                        case AMQP_BASIC_RETURN_METHOD:
-                            /* if a published message couldn't be routed and the mandatory flag was set
-                             * this is what would be returned. The message then needs to be read.
-                             */
-                        {
-                            amqp_message_t message;
-                            ret = amqp_read_message(conn, frame.channel, &message, 0);
-                            if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-                                return;
-                            }
-                            
-                            amqp_destroy_message(&message);
-                        }
-                            
-                            break;
-                            
-                        case AMQP_CHANNEL_CLOSE_METHOD:
-                            /* a channel.close method happens when a channel exception occurs, this
-                             * can happen by publishing to an exchange that doesn't exist for example
-                             *
-                             * In this case you would need to open another channel redeclare any queues
-                             * that were declared auto-delete, and restart any consumers that were attached
-                             * to the previous channel
-                             */
-                            return;
-                            
-                        case AMQP_CONNECTION_CLOSE_METHOD:
-                            /* a connection.close method happens when a connection exception occurs,
-                             * this can happen by trying to use a channel that isn't open for example.
-                             *
-                             * In this case the whole connection must be restarted.
-                             */
-                            return;
-                            
-                        default:
-                            fprintf(stderr ,"An unexpected method was received %d\n", frame.payload.method.id);
-                            return;
-                    }
-                }
-            }
-            
-        } else {
-            char *body = envelope.message.body.bytes;
-            body[envelope.message.body.len] = '\0'; // Fix the size of the data
-            root = json_loads(body, 0, &error);
-            char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-            if (!json_text) {
-                printf("%lu vs %zul\n", sizeof(body), envelope.message.body.len);
-                printf("%s\n", body);
-            } else {
-                printf("%s\n", json_text);
-                free(json_text);
-            }
-
-            amqp_destroy_envelope(&envelope);
-        }
-        
-        received++;
-    }
-}
-
-
-int ovMessageBusListen(char *argument[], char *path)
+int ovMsgBusListen(char *argument[], char *path)
 {
     // Count the size of arguments passed
     int count = 0;
