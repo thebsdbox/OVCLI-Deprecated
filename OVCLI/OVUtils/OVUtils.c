@@ -90,29 +90,6 @@ char *readDataFromFile(const char *file)
 
 char* readSessionIDforHost(const char *host)
 {
-    /*
-    FILE *fp;
-    char buffer[1024]; //size of Session ID
-    char filepath[1000]; //large file path
-    char *sessionID = NULL;
-    sessionID = malloc(sizeof(buffer));
-
-    strcpy(filepath, getenv("HOME")); // copy in the $HOME env into the string
-    strcat(filepath, host);
-
-    fp = fopen(filepath, "r");
-    if (fp) { 
-     //file opened succesfully */
-    /*
-        fgets(buffer, sizeof(buffer), fp);
-        fclose(fp);
-    } else {
-        printf("Error opening file %s \n", filepath);
-        return NULL;
-    }
-    strcpy(sessionID, buffer);
-    return sessionID;
-     */
     return readDataFromFile(host);
 }
 

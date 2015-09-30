@@ -141,6 +141,19 @@ int ovMsgBusListen(char *argument[], char *path)
     }
     char *oneViewAddress = argument[1]; // IP Address of HP OneView
     char *routingKey = argument[4]; // RabbitMQ Routing Key (Search params)
+    int output = OVSTDOUT;
+    // If no parameter passed then default to cmd line
+    if (count < 6) {
+        output = OVSTDOUT;
+    } else {
+        if (stringMatch(argument[5], "STDOUT")) {
+            output = OVSTDOUT;
+        } else if (stringMatch(argument[5], "FILE")) {
+            output = OVFILE;
+        } else if (stringMatch(argument[5], "HTTP")) {
+            output = OVHTTP;
+        }
+    }
     
     
     int status, port = 5671; // Static port allocation
@@ -168,6 +181,7 @@ int ovMsgBusListen(char *argument[], char *path)
         return -1;
     }
 
+    printf("SOCKET CODE IS BROKEN\n");
     status = amqp_ssl_socket_set_cacert(socket, cacert);
     if (!socket) {
         printf("\nError with Certificate Authority Certificate\n");
@@ -213,11 +227,13 @@ int ovMsgBusListen(char *argument[], char *path)
     amqpGetStatus(amqp_get_rpc_reply(conn));
 
    // Process Messages
+   // long messageCount = 0;
     {
         while (1) {
             amqp_rpc_reply_t res;
             amqp_envelope_t envelope;
-        
+            char *body;
+
             amqp_maybe_release_buffers(conn);
         
             res = amqp_consume_message(conn, &envelope, NULL, 0);
@@ -226,36 +242,54 @@ int ovMsgBusListen(char *argument[], char *path)
                 break;
             }
         
-            printf("Delivery %u, exchange %.*s routingkey %.*s\n",
-                   (unsigned) envelope.delivery_tag,
-                   (int) envelope.exchange.len, (char *) envelope.exchange.bytes,
-                   (int) envelope.routing_key.len, (char *) envelope.routing_key.bytes);
-        
-            if (envelope.message.properties._flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
-                printf("Content-type: %.*s\n",
-                       (int) envelope.message.properties.content_type.len,
-                       (char *) envelope.message.properties.content_type.bytes);
+            switch (output) {
+                case OVSTDOUT:
+                    printf("Delivery %u, exchange %.*s routingkey %.*s\n",
+                           (unsigned) envelope.delivery_tag,
+                           (int) envelope.exchange.len, (char *) envelope.exchange.bytes,
+                           (int) envelope.routing_key.len, (char *) envelope.routing_key.bytes);
+                    
+                    if (envelope.message.properties._flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
+                        printf("Content-type: %.*s\n",
+                               (int) envelope.message.properties.content_type.len,
+                               (char *) envelope.message.properties.content_type.bytes);
+                    }
+                    printf("----\n");
+                    
+                    //amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
+                    
+                    // Pointer to the data
+                    body = envelope.message.body.bytes;
+                    // Place a NULL at the end of the data so that printf will only make use of it like a string
+                    body[envelope.message.body.len] = '\0';
+                    
+                    // Parse the text as JSON and then have it INDENTED (readable)
+                    root = json_loads(body, 0, &error);
+                    char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
+                    if (!json_text) {
+                        printf("%s\n", body);
+                    } else {
+                        printf("%s\n", json_text);
+                    }
+                    // Tidy up
+                    free(json_text);
+                    json_decref(root);
+                    break;
+                case OVFILE:
+                    printf ("");
+                    char filename[FILENAME_MAX];
+                    sprintf(filename, "/%u.json", (unsigned) envelope.delivery_tag);
+                    // Pointer to the data
+                    body = envelope.message.body.bytes;
+                    // Place a NULL at the end of the data so that printf will only make use of it like a string
+                    body[envelope.message.body.len] = '\0';
+                    writeDataToFile(body, filename);
+                    break;
+                default:
+                    break;
             }
-            printf("----\n");
-        
-            //amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
             
-            // Pointer to the data
-            char *body = envelope.message.body.bytes;
-            // Place a NULL at the end of the data so that printf will only make use of it like a string
-            body[envelope.message.body.len] = '\0';
 
-            // Parse the text as JSON and then have it INDENTED (readable)
-            root = json_loads(body, 0, &error);
-            char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-            if (!json_text) {
-                printf("%s\n", body);
-            } else {
-            printf("%s\n", json_text);
-            }
-            // Tidy up
-            free(json_text);
-            json_decref(root);
             amqp_destroy_envelope(&envelope);
         }
     }
