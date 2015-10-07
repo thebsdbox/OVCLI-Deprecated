@@ -64,3 +64,7 @@ OVCLI.xcodeproj/xcuserdata/dan.xcuserdatad/xcschemes/OVCLI.xcscheme
 OVCLI.xcodeproj/xcuserdata/dan.xcuserdatad/xcschemes/xcschememanagement.plist
 
 OVCLI.xcodeproj/project.pbxproj
+
+*.xcuserstate
+
+build/OVCLI.build/Debug/OVCLI.build/dgph~

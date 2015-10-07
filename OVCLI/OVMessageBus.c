@@ -130,27 +130,65 @@ int ovMsgBusCertDownload(char *sessionID, char *argument[], char *path)
     return 0;
 }
 
+int ovMetricMsgBusGetSettings(char *sessionID, char *argument[])
+{
+    char urlString[256]; // Used to hold a full URL
+    char *httpData;
+    char *oneViewAddress = argument[1]; // IP Address of HP OneView
+    json_t *root; // Contains all of the json data once processed by jansson
+    json_error_t error; // Call back reference from JSON processing
+    
+    //root = json_pack("{s:s, s:s}", "type", "RabbitMqClientCertV2", "commonName", "default");
+    createURL(urlString, oneViewAddress, "certificates/client/rabbitmq");
+
+    
+    // Call to HP OneView for a client certificate and private key
+    createURL(urlString, oneViewAddress, "metrics/capability");
+    httpData = getRequestWithUrlAndHeader(urlString, sessionID);
+    if(!httpData)
+        return 1;
+    // Process the raw http data and free the allocated memory
+    root = json_loads(httpData, 0, &error);
+    char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
+    printf("%s\n", json_text);
+    free(json_text);
+    free(httpData);
+    return 0;
+}
+
 
 int ovMsgBusListen(char *argument[], char *path)
 {
     // Count the size of arguments passed
     int count = 0;
     while (argument[++count] !=NULL);
-    if (count < 3) {
+    if (count < 5) { // No Message Bus
         return -1;
     }
     char *oneViewAddress = argument[1]; // IP Address of HP OneView
-    char *routingKey = argument[4]; // RabbitMQ Routing Key (Search params)
+    char *messageBus = argument[4]; // Connect to either the state or the metric bus
+    if (stringMatch(messageBus, "STATE")) {
+        messageBus = "scmb";
+    } else if (stringMatch(messageBus, "METRIC")) {
+        messageBus = "msmb";
+    } else {
+        printf("Incorrect Message bus to connect to");
+        return -1;
+    }
+    char *routingKey = argument[5]; // RabbitMQ Routing Key (Search params)
     int output = OVSTDOUT;
     // If no parameter passed then default to cmd line
-    if (count < 6) {
+    if (count < 7) {
         output = OVSTDOUT;
     } else {
-        if (stringMatch(argument[5], "STDOUT")) {
+        if (stringMatch(argument[6], "STDOUT")) {
             output = OVSTDOUT;
-        } else if (stringMatch(argument[5], "FILE")) {
+        } else if (stringMatch(argument[6], "FILE")) {
             output = OVFILE;
-        } else if (stringMatch(argument[5], "HTTP")) {
+        } else if (stringMatch(argument[6], "HTTP")) {
+            if (count < 7) {
+                printf("\nHTTP Url required\n");
+            }
             output = OVHTTP;
         }
     }
@@ -160,6 +198,7 @@ int ovMsgBusListen(char *argument[], char *path)
     amqp_bytes_t queuename;
     amqp_socket_t *socket;
     amqp_connection_state_t conn;
+    
     // JSON Processing from MessageBus
     json_t *root; // Contains all of the json data once processed by jansson
     json_error_t error; // Used as a passback for error data during json processing
@@ -218,7 +257,7 @@ int ovMsgBusListen(char *argument[], char *path)
     }
 
     // Bind our new queue to the exchange and use a routing Key to (possibly) reduce the amount of messages
-    amqp_queue_bind(conn, 1, queuename, amqp_cstring_bytes("scmb"), amqp_cstring_bytes(routingKey), amqp_empty_table);
+    amqp_queue_bind(conn, 1, queuename, amqp_cstring_bytes(messageBus), amqp_cstring_bytes(routingKey), amqp_empty_table);
 
     amqpGetStatus(amqp_get_rpc_reply(conn));
     // Start consuming messages on the queue
@@ -233,7 +272,7 @@ int ovMsgBusListen(char *argument[], char *path)
             amqp_rpc_reply_t res;
             amqp_envelope_t envelope;
             char *body;
-
+            char filename[FILENAME_MAX];
             amqp_maybe_release_buffers(conn);
         
             res = amqp_consume_message(conn, &envelope, NULL, 0);
@@ -241,9 +280,15 @@ int ovMsgBusListen(char *argument[], char *path)
             if (AMQP_RESPONSE_NORMAL != res.reply_type) {
                 break;
             }
-        
+            
+            // Fix the bytes stream so that it can be progressed as a string
+            body = envelope.message.body.bytes;
+            // Place a NULL at the end of the data so that printf will only make use of it like a string
+            body[envelope.message.body.len] = '\0';
+            
             switch (output) {
                 case OVSTDOUT:
+                    // Print all of the Messages from the Bus to the CLI
                     printf("Delivery %u, exchange %.*s routingkey %.*s\n",
                            (unsigned) envelope.delivery_tag,
                            (int) envelope.exchange.len, (char *) envelope.exchange.bytes,
@@ -255,13 +300,6 @@ int ovMsgBusListen(char *argument[], char *path)
                                (char *) envelope.message.properties.content_type.bytes);
                     }
                     printf("----\n");
-                    
-                    //amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
-                    
-                    // Pointer to the data
-                    body = envelope.message.body.bytes;
-                    // Place a NULL at the end of the data so that printf will only make use of it like a string
-                    body[envelope.message.body.len] = '\0';
                     
                     // Parse the text as JSON and then have it INDENTED (readable)
                     root = json_loads(body, 0, &error);
@@ -276,20 +314,22 @@ int ovMsgBusListen(char *argument[], char *path)
                     json_decref(root);
                     break;
                 case OVFILE:
-                    printf ("");
-                    char filename[FILENAME_MAX];
-                    sprintf(filename, "/%u.json", (unsigned) envelope.delivery_tag);
-                    // Pointer to the data
-                    body = envelope.message.body.bytes;
-                    // Place a NULL at the end of the data so that printf will only make use of it like a string
-                    body[envelope.message.body.len] = '\0';
+                    // Save every JSON Message to a numbered file
+                    sprintf(filename, "~/%u.json", (unsigned) envelope.delivery_tag);
                     writeDataToFile(body, filename);
                     break;
+                case OVHTTP:
+                {
+                    // Post messages from the Message Bus to another web server
+                    char urlString[strlen(argument[7])+2];
+                    sprintf(urlString, "%s/%u", argument[7], (unsigned) envelope.delivery_tag);
+                    postRequestWithUrlAndData(argument[7], body);
+                    break;
+                }
                 default:
                     break;
             }
             
-
             amqp_destroy_envelope(&envelope);
         }
     }
