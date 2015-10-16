@@ -1,4 +1,4 @@
-//
+ //
 //  OVHttps.c
 //  OVCLI
 //
@@ -41,15 +41,25 @@ static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream)
 
 char *postRequestWithUrl(const char *url)
 {
-    return postRequestWithUrlAndDataAndHeader(url, NULL, NULL);
+    return httpRequest(url, NULL, NULL, NULL);
 }
 
 char *postRequestWithUrlAndData(const char *url, const char *postData)
 {
-    return postRequestWithUrlAndDataAndHeader(url, postData, NULL);
+    return httpRequest(url, postData, NULL, NULL);
 }
 
 char *postRequestWithUrlAndDataAndHeader(const char *url, const char *postData, const char *header)
+{
+    return httpRequest(url, postData, header, NULL);
+}
+
+char *putRequestWithURLAndDataAndHeader(const char *url, const char *putData, const char *header)
+{
+    return httpRequest(url, NULL, header, putData);
+}
+
+char *httpRequest(const char *url, const char *postData, const char *header, const char *putData)
 {
     CURL *curl = NULL;
     CURLcode status;
@@ -72,15 +82,15 @@ char *postRequestWithUrlAndDataAndHeader(const char *url, const char *postData, 
     };
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    
-    /* HP OneView needs a Content-Type setting*/
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-    headers = curl_slist_append(headers, "X-API-Version: 120");
-    
-    if (header)
+        
+    if (header)        
     {
+        /* HP OneView needs a Content-Type setting*/
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        headers = curl_slist_append(headers, "X-API-Version: 120");
+        
         // Append the Session ID to the headers
-        char authHeader[40 ]; //6 for auth: and 33 for sessionID
+        char authHeader[40]; //6 for auth: and 33 for sessionID
         strcpy(authHeader, "Auth: ");
         strcat(authHeader, header);
         //printf("[DEBUG] HEADERS: %s\n", authHeader);
@@ -91,6 +101,12 @@ char *postRequestWithUrlAndDataAndHeader(const char *url, const char *postData, 
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0); /* don't veryify peer Needs changing */
     if (postData) {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
+    }
+    
+    if (putData) {
+        //specify the request (PUT in our case), the post as normal
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, putData);
     }
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10); // Give the connection process a 10 second timeout.
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
