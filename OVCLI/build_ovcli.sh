@@ -14,12 +14,12 @@ OS=`uname`
 echo "Detected Operating System: $OS"
 if [ "$OS" == "Darwin" ]; then 
 	echo "Building for OSX"
-	gcc *.c ./OVUtils/*.c  -I./libjansson/ -I./librabbitmq/ -I ./OVUtils/ -lcurl ./Libraries/osx/libjansson.a ./Libraries/osx/librabbitmq.a -lcrypto -lssl -o ovcli
+	gcc *.c ./OVUtils/*.c ./Libraries/libinfluxdb/*.c -I./Libraries/libinfluxdb/ -I./libjansson/ -I./librabbitmq/ -I ./OVUtils/ -lcurl ./Libraries/osx/libjansson.a ./Libraries/osx/librabbitmq.a -lcrypto -lssl -o ovcli
 fi
 
 if [ "$OS" == "Linux" ]; then
 	echo "Building for Linux"
-	gcc -std=c99 *.c ./OVUtils/*.c  -I./libjansson/ -I./librabbitmq/ -I ./OVUtils/ -lcurl ./Libraries/linux/libjansson.a ./Libraries/linux/librabbitmq.a -lcrypto -lssl -o ovcli
+	gcc -std=c99 *.c ./OVUtils/*.c ./Libraries/libinfluxdb/*.c -I./Libraries/libinfluxdb/ -I./libjansson/ -I./librabbitmq/ -I ./OVUtils/ -lcurl ./Libraries/linux/libjansson.a ./Libraries/linux/librabbitmq.a -lcrypto -lssl -o ovcli
 fi
 
 if [ $? -ne 0 ]; then
