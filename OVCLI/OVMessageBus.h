@@ -16,8 +16,7 @@
 #define OVSTDOUT   0 // Write out to command line
 #define OVFILE     1 // Write out to .json fies
 #define OVHTTP     2 // Proxy the messages from HP OneView to another server
-
-
+#define OVINFLUXDB 3 // Proxy the messages from HP OneView to an InfluxDB server
 
 int ovMsgBusCertGenerate(char *sessionID, char *argument[]);
 int ovMsgBusCertDownload(char *sessionID, char *argument[], char *path);

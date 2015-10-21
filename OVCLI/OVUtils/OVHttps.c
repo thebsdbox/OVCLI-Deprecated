@@ -82,13 +82,12 @@ char *httpRequest(const char *url, const char *postData, const char *header, con
     };
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
-        
-    if (header)        
+    /* HP OneView needs a Content-Type setting*/
+
+    if (header)
     {
-        /* HP OneView needs a Content-Type setting*/
         headers = curl_slist_append(headers, "Content-Type: application/json");
         headers = curl_slist_append(headers, "X-API-Version: 120");
-        
         // Append the Session ID to the headers
         char authHeader[40]; //6 for auth: and 33 for sessionID
         strcpy(authHeader, "Auth: ");
@@ -96,7 +95,6 @@ char *httpRequest(const char *url, const char *postData, const char *header, con
         //printf("[DEBUG] HEADERS: %s\n", authHeader);
         headers = curl_slist_append(headers, authHeader);
     }
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0); /* don't veryify peer Needs changing */
     if (postData) {
@@ -107,7 +105,9 @@ char *httpRequest(const char *url, const char *postData, const char *header, con
         //specify the request (PUT in our case), the post as normal
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, putData);
+        headers = NULL;
     }
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10); // Give the connection process a 10 second timeout.
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);

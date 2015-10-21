@@ -16,6 +16,8 @@
 // JSON
 #include "jansson.h"
 
+// InfluxDB
+#include "libinfluxdb.h"
 
 
 #include "OVUtils.h"
@@ -402,14 +404,12 @@ int main(int argc, char *argv[])
         if (strstr(argv[3], "GENERATE")) {
             ovMsgBusCertGenerate(sessionID, argv);
         }
-        
         if (strstr(argv[3], "CERT")) {
            ovMsgBusCertDownload(sessionID, argv, path);
         }
-        if (stringMatch(argv[3], "METRIC-SETTINGS")) {
-            ovMetricMsgBusGetSettings( sessionID, argv);
+        if (stringMatch(argv[3], "METRIC")) {
+            ovMetricMsgBusGetSettings(sessionID, argv);
         }
-        
         if (stringMatch(argv[3], "LISTEN")) {
             ovMsgBusListen(argv, path);
         }

@@ -116,12 +116,11 @@ int ovLogin(char *argument[], char *path)
     
     //build URL
     createURL(urlString, oneViewAddress, "login-sessions");
-//    snprintf(urlString, 256, "https://%s/rest/%s", oneViewAddress, "login-sessions");
     
     if (getenv("OV_DEBUG"))
         printf("[INFO] URL:\t %s\n", urlString);
     // Call to HP OneView API
-    httpData = postRequestWithUrlAndData(urlString, json_text);
+    httpData = postRequestWithUrlAndDataAndHeader(urlString, json_text, "");
     if (getenv("OV_DEBUG"))
         printf("[INFO] JSON:\t %s\n", json_text);
     free (json_text);
@@ -130,14 +129,15 @@ int ovLogin(char *argument[], char *path)
     
     root = json_loads(httpData, 0, &error);
     free(httpData);
-    const char* sessionID = json_string_value(json_object_get(root, "sessionID"));
-    
+    char* sessionID = (char *)json_string_value(json_object_get(root, "sessionID"));
     // Write the Session
     if (writeSessionIDforHost(sessionID, path) != 0) {
         printMessage(RED, "ERROR", "The HP OneView Session ID could not be saved");
         return 1;
     }
-    printf("[DEBUG] OVID:\t  %s\n",sessionID);
+    if (getenv("OV_DEBUG"))
+        printMessage(GREEN, "DEBUG", sessionID);
+    json_decref(root);
     return 0;
     
 }

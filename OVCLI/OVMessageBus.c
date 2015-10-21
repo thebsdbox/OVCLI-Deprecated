@@ -31,6 +31,9 @@
 #include "amqp_ssl_socket.h"
 #include "amqp_framing.h"
 
+// Influx DB
+#include "libinfluxdb.h"
+
 uint64_t now_microseconds(void)
 {
     struct timeval tv;
@@ -130,28 +133,75 @@ int ovMsgBusCertDownload(char *sessionID, char *argument[], char *path)
     return 0;
 }
 
+int ovMetricMsgBusSetConfig(char *sessionID, char *argument[])
+{
+    char urlString[256]; // Used to hold a full URL
+    char *httpData;
+    char *oneViewAddress = argument[1]; // IP Address of HP OneView
+    char *type = argument[5];  //Device
+    char *interval = argument[6]; // Sample rate
+    char *frequency = argument[7]; // Frequency of updates
+    
+    if (!type) {
+        printf("No argument given for device to monitor e.g. /rest/enclosures\n");
+        return -1;
+    }
+    
+    if (!interval) {
+        printf("No argument given for interval for sample data e.g. 300 (300 sec/5min)\n");
+        return -1;
+    }
+    
+    if (!frequency) {
+        printf("No argument fiven for frequency for results e.g. 3600 (3600 sec/1hour)\n");
+        return -1;
+    }
+    
+    json_t *root; // Contains all of the json data once processed by jansson
+    
+    root = json_pack("{s:[{s:s,s:s,s:s}]}", "sourceTypeList", "sourceType" ,type, "sampleIntervalInSeconds",  interval, "frequencyOfRelayInSeconds", frequency);
+    createURL(urlString, oneViewAddress, "metrics/configuration");
+    // Call to HP OneView API to Generate the keys/certs (409 ERROR if certificate exists)
+    httpData = putRequestWithURLAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
+    json_decref(root);
+    return 0;
+}
+
 int ovMetricMsgBusGetSettings(char *sessionID, char *argument[])
 {
     char urlString[256]; // Used to hold a full URL
     char *httpData;
     char *oneViewAddress = argument[1]; // IP Address of HP OneView
+    char *type = argument[4];
+    if (type) {
+        if (stringMatch(type, "CAPABILITY")) {
+            type = "metrics/capability";
+        } else if (stringMatch(type, "GETCONFIG")) {
+            type = "metrics/configuration";
+        } else if (stringMatch(type, "SETCONFIG")) {
+            return ovMetricMsgBusSetConfig(sessionID, argument);
+        } else {
+            printf ("No argument given for Settings\n");
+            return -1;
+        }
+        
+    }
     json_t *root; // Contains all of the json data once processed by jansson
     json_error_t error; // Call back reference from JSON processing
-    
-    //root = json_pack("{s:s, s:s}", "type", "RabbitMqClientCertV2", "commonName", "default");
-    createURL(urlString, oneViewAddress, "certificates/client/rabbitmq");
-
-    
+       
     // Call to HP OneView for a client certificate and private key
-    createURL(urlString, oneViewAddress, "metrics/capability");
+    createURL(urlString, oneViewAddress, type);
     httpData = getRequestWithUrlAndHeader(urlString, sessionID);
     if(!httpData)
         return 1;
     // Process the raw http data and free the allocated memory
     root = json_loads(httpData, 0, &error);
     char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
-    printf("%s\n", json_text);
-    free(json_text);
+    if (json_text) {
+        printf("%s\n", json_text);
+        free(json_text);
+    }
+    json_decref(root);
     free(httpData);
     return 0;
 }
@@ -172,10 +222,14 @@ int ovMsgBusListen(char *argument[], char *path)
     } else if (stringMatch(messageBus, "METRIC")) {
         messageBus = "msmb";
     } else {
-        printf("Incorrect Message bus to connect to");
+        printf("Incorrect Message bus to connect to\n");
         return -1;
     }
     char *routingKey = argument[5]; // RabbitMQ Routing Key (Search params)
+    if (!routingKey) {
+        printf("No routing key specified e.g. scmb.#\n");
+        return  -1;
+    }
     int output = OVSTDOUT;
     // If no parameter passed then default to cmd line
     if (count < 7) {
@@ -188,13 +242,24 @@ int ovMsgBusListen(char *argument[], char *path)
         } else if (stringMatch(argument[6], "HTTP")) {
             if (count < 7) {
                 printf("\nHTTP Url required\n");
+                return -1;
             }
             output = OVHTTP;
+        } else if (stringMatch(argument[6], "INFLUXDB")) {
+            if (count < 8) {
+                printf("\nInfluxDB DB name required\n");
+                return -1;
+            }
+            if (count < 7) {
+                printf("\nInfluxDB IP required\n");
+                return -1;
+            }
+            output = OVINFLUXDB;
         }
     }
     
     
-    int status, port = 5671; // Static port allocation
+    int port = 5671; // Static port allocation
     amqp_bytes_t queuename;
     amqp_socket_t *socket;
     amqp_connection_state_t conn;
@@ -220,19 +285,15 @@ int ovMsgBusListen(char *argument[], char *path)
         return -1;
     }
 
-    printf("SOCKET CODE IS BROKEN\n");
-    status = amqp_ssl_socket_set_cacert(socket, cacert);
-    if (!socket) {
+    if (amqp_ssl_socket_set_cacert(socket, cacert)) {
         printf("\nError with Certificate Authority Certificate\n");
         return -1;
     }
-    status = amqp_ssl_socket_set_key(socket, cert, key);
-    if (!socket) {
+    if (amqp_ssl_socket_set_key(socket, cert, key)) {
         printf("\nError with Key or Certificate\n");
         return -1;
     }
-    status = amqp_socket_open(socket, oneViewAddress, port);
-    if (!socket) {
+    if (amqp_socket_open(socket, oneViewAddress, port)) {
         printf("\nConnection to RabbitMQ Server has failed, check IP or Port\n");
         return -1;
     }
@@ -266,7 +327,6 @@ int ovMsgBusListen(char *argument[], char *path)
     amqpGetStatus(amqp_get_rpc_reply(conn));
 
    // Process Messages
-   // long messageCount = 0;
     {
         while (1) {
             amqp_rpc_reply_t res;
@@ -280,11 +340,8 @@ int ovMsgBusListen(char *argument[], char *path)
             if (AMQP_RESPONSE_NORMAL != res.reply_type) {
                 break;
             }
-            
-            // Fix the bytes stream so that it can be progressed as a string
-            body = envelope.message.body.bytes;
-            // Place a NULL at the end of the data so that printf will only make use of it like a string
-            body[envelope.message.body.len] = '\0';
+
+            body = strndup(envelope.message.body.bytes, envelope.message.body.len);
             
             switch (output) {
                 case OVSTDOUT:
@@ -305,12 +362,15 @@ int ovMsgBusListen(char *argument[], char *path)
                     root = json_loads(body, 0, &error);
                     char *json_text = json_dumps(root, JSON_INDENT(4)); //4 is close to a tab
                     if (!json_text) {
-                        printf("%s\n", body);
+                        // There has been an error with the libjansson library parsing the text
+                        printf("\n%s\n", body);
+                        fprintf(stderr, "error: on line %d: %s\n", error.line, error.text);
+                        printf("String Length: %zu, versus actual length: %lu \n", envelope.message.body.len, strlen(body));
                     } else {
                         printf("%s\n", json_text);
+                        free(json_text); // Free only if it's been allocated otherwise can lead to an error
                     }
                     // Tidy up
-                    free(json_text);
                     json_decref(root);
                     break;
                 case OVFILE:
@@ -326,10 +386,16 @@ int ovMsgBusListen(char *argument[], char *path)
                     postRequestWithUrlAndData(argument[7], body);
                     break;
                 }
+                case OVINFLUXDB:
+                    postToServer(argument[7], argument[8],body);
+                    break;
                 default:
                     break;
             }
-            
+            if (body) {
+                // Tidy up cloned strings
+                free(body);
+            }
             amqp_destroy_envelope(&envelope);
         }
     }
