@@ -6,11 +6,26 @@
 //  Copyright (c) 2015 Daniel Finneran. All rights reserved.
 //
 
+#include <unistd.h>
+
 #include "OVUtils.h"
 #include "OVOutput.h"
-#include "OVHttps.h"
+//#include "OVHttps.h"
+#include "dcHttp.h"
 
 #include "jansson.h"
+
+extern char *OV_Version;
+
+void setOVHeaders(char *sessionID)
+{
+    appendHttpHeader("Content-Type: application/json");
+    appendHttpHeader(OV_Version);
+    if (sessionID)
+    {
+        createHeader("Auth: ", sessionID);
+    }
+}
 
 int stringMatch(char *string1, char *string2)
 {
@@ -104,7 +119,6 @@ int ovLogin(char *argument[], char *path)
     char *httpData;
     json_t *root;
     json_error_t error;
-    
     char *oneViewAddress = argument[1]; // IP Address of HP OneView
     char *username = argument[3]; // Username Parameter
     char *password = argument[4]; // Password Parameter
@@ -120,7 +134,9 @@ int ovLogin(char *argument[], char *path)
     if (getenv("OV_DEBUG"))
         printf("[INFO] URL:\t %s\n", urlString);
     // Call to HP OneView API
-    httpData = postRequestWithUrlAndDataAndHeader(urlString, json_text, "");
+    setHttpData(json_text);
+    setOVHeaders(NULL);
+    httpData = httpFunction(urlString);
     if (getenv("OV_DEBUG"))
         printf("[INFO] JSON:\t %s\n", json_text);
     free (json_text);
