@@ -12,6 +12,9 @@
 #include <assert.h>
 #include <ctype.h>
 
+//TBD
+#include <unistd.h>
+
 
 // JSON
 #include "jansson.h"
@@ -29,14 +32,19 @@
 #include "OVCopy.h"
 #include "OVMessageBus.h"
 
-
-
-
 #define URL_FORMAT   "https://%s/rest/%s"
 #define URL_SIZE     256
 #define DELIM "."
 
-int debug;
+#define OV120 "X-API-Version: 120"
+#define OV200 "X-API-Version: 200"
+
+#include "dcHttp.h"
+
+#include "yaml.h"
+
+int debug; // GLOBAL Variable
+char *OV_Version;
 
 /* return 1 if string contain only digits, else return 0 */
 int valid_digit(char *ip_str)
@@ -92,12 +100,36 @@ int is_valid_ip(char *ip_str)
     return 1;
 }
 
-
+int identifySystem(char *url)
+{
+    // This function will iterate through the available systems and attempt to identify the system and it's version
+    if (!url) {
+        // No URL
+        return 1;
+    }
+    //Begin Checks check
+    //char *httpData;
+    SetHttpMethod(DCHTTPGET);
+    // curl -k -X GET https://192.168.113.128/rest/version
+    // {"currentVersion":120,"minimumVersion":1}
+    // createURL(<#char *urlString#>, <#char *address#>, <#char *url#>)
+    // httpData = httpFunction(urlString);
+    
+    return 0;
+}
 
 int main(int argc, char *argv[])
 {
-    char *oneViewAddress;
     
+    //setHttpAuth("admin:admin");
+    //setHttpData("{\"ins_api\":{\"version\":\"1.2\",\"type\":\"cli_show\",\"chunk\":\"0\",\"sid\":\"1\",\"input\":\"show version\",\"output_format\":\"json\"}}");
+    //appendHttpHeader("Content-Type: application/json");
+    //printf("%s\n",httpFunction("http://192.168.113.50/ins"));
+    OV_Version = OV120;
+    char *oneViewAddress;
+    //main2();
+    //sleep(40);
+
     // Check for Debug Mode
     if (getenv("OV_DEBUG")) {
         debug = 1; // debug mode enabled
@@ -112,6 +144,7 @@ int main(int argc, char *argv[])
         oneViewAddress = argv[1];
         if (is_valid_ip(oneViewAddress)) {
             // Create a string based upon the path to the sessionID
+            identifySystem(oneViewAddress);
             sprintf(path, "/.%s_ov",oneViewAddress);
         } else {
             printMessage(YELLOW, "DEBUG", "Invalid IP Address");
@@ -133,6 +166,7 @@ int main(int argc, char *argv[])
         ovCreatePrintHelp();
         ovShowPrintHelp();
         ovCopyPrintHelp();
+        ovMessageBusHelp();
         return 1;
     }
  
@@ -145,9 +179,10 @@ int main(int argc, char *argv[])
 
     if (stringMatch(argv[2], "LOGIN")) {
         // Login to HP OneView
+        SetHttpMethod(DCHTTPPOST);
         ovLogin(argv, path);
         return 0;
-    } else if (strstr(argv[2], "SHOW")) {
+    } else if (stringMatch(argv[2], "SHOW")) {
         // Show/Query information from HP OneView
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
@@ -157,7 +192,7 @@ int main(int argc, char *argv[])
         ovShow(sessionID, argc, argv);
         return 0; // return sucess
 
-    } else if (strstr(argv[2], "CREATE")) {
+    } else if (stringMatch(argv[2], "CREATE")) {
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
             printf("[ERROR] No session ID\n");
@@ -173,131 +208,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         ovCopy(sessionID, argv);
-        return 0; //return sucess
-        
-        // Debug OVID outpu
-        //printf("[DEBUG] OVID:\t  %s\n",sessionID);
-        /*
-        if (strstr(argv[3], "NETWORKS")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "ethernet-networks");
-            
-            // Call to HP OneView API
-            httpData = getRequestWithUrlAndHeader(url, sessionID);
-            
-            if(!httpData)
-                return 1;
-            
-            root = json_loads(httpData, 0, &error);
-            
-            json_t *memberArray = json_object_get(root, "members");
-            if (json_array_size(memberArray) != 0) {
-                size_t index;
-                json_t *network = NULL;
-                //char *json_text;
-                json_array_foreach(memberArray, index, network) {
-                    const char *uri = json_string_value(json_object_get(network, "uri"));
-                    if (uri != NULL) {
-                        if (strstr(uri, argv[4])) {
-                            // Remove bits
-                            //json_object_del(network, "uri");
-                            json_object_del(network, "eTag");
-                            json_object_del(network, "modified");
-                            json_object_del(network, "created");
-                            json_object_del(network, "connectionTemplateUri");
-
-                            snprintf(url, URL_SIZE, URL_FORMAT, argv[5], "ethernet-networks");
-                            sprintf(path, "/.%s_ov",argv[5]);
-                            
-                            sessionID = readSessionIDforHost(path);
-                            httpData = postRequestWithUrlAndDataAndHeader(url, json_dumps(network, JSON_ENSURE_ASCII), sessionID);
-                            
-                            if(!httpData)
-                                return 1;
-                            
-                        }
-                    }
-                }
-            }
-            
-        } else if (strstr(argv[3], "SERVER-PROFILES")) {
-            snprintf(url, URL_SIZE, URL_FORMAT, argv[1], "server-profiles");
-            
-            // Call to HP OneView API
-            httpData = getRequestWithUrlAndHeader(url, sessionID);
-            
-            if(!httpData)
-                return 1;
-            
-            root = json_loads(httpData, 0, &error);
-            
-            // Find Server Profile first
-            //int fieldCount = argc -5; //argv[0] is the path to the program
-            json_t *memberArray = json_object_get(root, "members");
-            if (json_array_size(memberArray) != 0) {
-                size_t index;
-                json_t *serverProfile = NULL;
-                //char *json_text;
-                json_array_foreach(memberArray, index, serverProfile) {
-                    const char *uri = json_string_value(json_object_get(serverProfile, "uri"));
-                    if (uri != NULL) {
-                        if (strstr(uri, argv[4])) {
-
-                            json_object_del(serverProfile, "uri");
-                            json_object_del(serverProfile, "serialNumber");
-                            json_object_del(serverProfile, "uuid");
-                            json_object_del(serverProfile, "taskUri");
-                            json_object_del(serverProfile, "status");
-                            json_object_del(serverProfile, "inProgress");
-                            json_object_del(serverProfile, "modified");
-                            json_object_del(serverProfile, "eTag");
-                            json_object_del(serverProfile, "created");
-                            json_object_del(serverProfile, "serverHardwareUri");
-                            json_object_del(serverProfile, "enclosureBay");
-                            json_object_del(serverProfile, "enclosureUri");
-                            
-                            //json_object_del(serverProfile, "connections");
-                            json_t *connections, *connectionsArray= json_object_get(serverProfile, "connections");
-                            json_array_foreach(connectionsArray, index, connections) {
-                                json_object_del(connections, "mac");
-                                json_object_del(connections, "wwnn");
-                                json_object_del(connections, "wwpn");
-                            }
-                            
-                            //int profileCount = atoi(argv[5]);
-                            //if (profileCount != 0){
-                              //  char name[100];
-
-                                //char profileName[100];
-                                //strcpy(profileName, json_string_value(json_object_get(serverProfile, "name")));
-                                //for (int i =0; i <profileCount; i++) {
-                                   // sprintf(name, "%s_%d",profileName, i);
-                                  //  printf("%s\n", name);
-                                   // json_string_set( json_object_get(serverProfile, "name"), name);
-                            json_string_set(json_object_get(serverProfile, "enclosureGroupUri"), argv[6]);
-                            json_string_set(json_object_get(serverProfile, "serverHardwareTypeUri"), argv[7]);
-
-                            snprintf(url, URL_SIZE, URL_FORMAT, argv[5], "server-profiles");
-                            sprintf(path, "/.%s_ov",argv[5]);
-
-                            sessionID = readSessionIDforHost(path);
-                            httpData = postRequestWithUrlAndDataAndHeader(url, json_dumps(serverProfile, JSON_ENSURE_ASCII), sessionID);
-                                    
-                                    if(!httpData)
-                                        return 1;
-                        
-                            
-
-                        }
-                        
-                    }
-                }
-            }
-            
-        }
-*/
-    
-        
-        
+        return 0; //return success
     } else if (strstr(argv[2], "CLONE")) {
         char *sessionID = readSessionIDforHost(path);
         if (!sessionID) {
@@ -327,9 +238,11 @@ int main(int argc, char *argv[])
                 json_t *serverProfile = NULL;
                 //char *json_text;
                 json_array_foreach(memberArray, index, serverProfile) {
-                        const char *uri = json_string_value(json_object_get(serverProfile, "uri"));
+                    const char *uri = json_string_value(json_object_get(serverProfile, "uri"));
+                    char *cloneuri = argv[4];
+                    printf ("%s / %s /n", cloneuri, url);
                         if (uri != NULL) {
-                            if (strstr(uri, argv[4])) {
+                            if (stringMatch(cloneuri, (char *)uri)) {
                                 //json_text = json_dumps(serverProfile, JSON_INDENT(4)); //4 is close to a tab
                                 //printf("%s\n", json_text);
                                 //
@@ -388,30 +301,34 @@ int main(int argc, char *argv[])
                             }
                             
                         }
+                    }
                 }
-            }
-            
+        } else {
+            printf("Unknown entity to clone \n");
         }
-    } else if (strstr(argv[2], "MESSAGEBUS")) {
+    } else if (stringMatch(argv[2], "MESSAGEBUS")) {
         char *sessionID = readSessionIDforHost(path);
+        
         if (!sessionID) {
             printf("[ERROR] No session ID\n");
             return 1;
         } else if (argc < 4) {
-            printf("[ERROR] Incorrect usage\n");
+            ovMessageBusHelp();
             return 1;
         }
-        if (strstr(argv[3], "GENERATE")) {
+        
+        // Step through the third argument and determine what is the operation
+        
+        if (stringMatch(argv[3], "GENERATE")) {
             ovMsgBusCertGenerate(sessionID, argv);
-        }
-        if (strstr(argv[3], "CERT")) {
+        } else if (stringMatch(argv[3], "CERT")) {
            ovMsgBusCertDownload(sessionID, argv, path);
-        }
-        if (stringMatch(argv[3], "METRIC")) {
+        } else if (stringMatch(argv[3], "METRIC")) {
             ovMetricMsgBusGetSettings(sessionID, argv);
-        }
-        if (stringMatch(argv[3], "LISTEN")) {
+        } else if (stringMatch(argv[3], "LISTEN")) {
             ovMsgBusListen(argv, path);
+        } else {
+        ovMessageBusHelp();
         }
     }
 
