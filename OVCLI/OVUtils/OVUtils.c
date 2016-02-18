@@ -27,6 +27,34 @@ void setOVHeaders(char *sessionID)
     }
 }
 
+int identifySystem(char *oneViewAddress)
+{
+    // This function will iterate through the available systems and attempt to identify the system and it's version
+    if (!oneViewAddress) {
+        // No URL
+        return 1;
+    }
+    //Begin Checks check
+
+    char *httpData;
+    SetHttpMethod(DCHTTPGET);
+    json_t *root;
+    json_error_t error;
+
+    char urlString[256];
+    createURL(urlString, oneViewAddress, "version");
+    if (getenv("OV_DEBUG"))
+        printf("[INFO] URL:\t %s\n", urlString);
+
+    setOVHeaders(NULL);
+    httpData = httpFunction(urlString);
+    root = json_loads(httpData, 0, &error);
+    free(httpData);
+    json_int_t version = json_integer_value(json_object_get(root, "currentVersion"));
+    // Casting from a long long to an integer (currently the versioning scheme in HPE OneView is a number in the hundreds to define major/minor
+    return (int) version;
+}
+
 int stringMatch(char *string1, char *string2)
 {
     while (*string1 == *string2) {

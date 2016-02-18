@@ -68,3 +68,15 @@ OVCLI.xcodeproj/project.pbxproj
 *.xcuserstate
 
 build/OVCLI.build/Debug/OVCLI.build/dgph~
+
+build/Debug/test.yaml
+
+build/Debug/X1.output
+
+build/OVCLI.build/Debug/OVCLI.build/dgph (Daniel’s MacBook Pro's conflicted copy 2015-11-27)
+
+build/OVCLI.build/Debug/OVCLI.build/dgph~ (Daniel’s MacBook Pro's conflicted copy 2015-11-27)
+
+OVCLI/yaml.c
+
+OVCLI/yaml.h

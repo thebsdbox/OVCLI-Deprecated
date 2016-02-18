@@ -38,7 +38,7 @@ static size_t write_response(void *ptr, size_t size, size_t nmemb, void *stream)
     return size * nmemb;
 }
 
-
+// Post Requests (wrappers around HttpRequest)
 char *postRequestWithUrl(const char *url)
 {
     return httpRequest(url, NULL, NULL, NULL);
@@ -54,11 +54,26 @@ char *postRequestWithUrlAndDataAndHeader(const char *url, const char *postData, 
     return httpRequest(url, postData, header, NULL);
 }
 
+// Put Request (wrapper around HttpRequest)
 char *putRequestWithURLAndDataAndHeader(const char *url, const char *putData, const char *header)
 {
     return httpRequest(url, NULL, header, putData);
 }
 
+
+// Get Request (wrapper around post requests, no data sent)
+char *getRequestWithUrl(const char *url)
+{
+    return postRequestWithUrl(url);
+}
+
+char *getRequestWithUrlAndHeader(const char *url, const char *header)
+{
+    return postRequestWithUrlAndDataAndHeader(url, NULL, header);
+}
+
+
+// httpRequest function
 char *httpRequest(const char *url, const char *postData, const char *header, const char *putData)
 {
     CURL *curl = NULL;
@@ -87,16 +102,15 @@ char *httpRequest(const char *url, const char *postData, const char *header, con
     if (header)
     {
         headers = curl_slist_append(headers, "Content-Type: application/json");
-        headers = curl_slist_append(headers, "X-API-Version: 120");
+        headers = curl_slist_append(headers, "X-API-Version: 200");
         // Append the Session ID to the headers
-        char authHeader[40]; //6 for auth: and 33 for sessionID
+        char authHeader[56]; //6 for auth: and 48 (33 < 1.20 version) for sessionID
         strcpy(authHeader, "Auth: ");
         strcat(authHeader, header);
-        //printf("[DEBUG] HEADERS: %s\n", authHeader);
         headers = curl_slist_append(headers, authHeader);
     }
     
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0); /* don't veryify peer Needs changing */
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0); /* This is due to self signed Certs */
     if (postData) {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
     }
@@ -111,7 +125,7 @@ char *httpRequest(const char *url, const char *postData, const char *header, con
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10); // Give the connection process a 10 second timeout.
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_response);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &write_result);
-    
+    //curl_easy_setopt(curl, CURLOPT_USERPWD, "admin:admin");
     status = curl_easy_perform(curl);
     if(status != 0)
     {
@@ -180,12 +194,5 @@ error:
     return NULL;
 }
 
-char *getRequestWithUrl(const char *url)
-{
-    return postRequestWithUrl(url);
-}
-char *getRequestWithUrlAndHeader(const char *url, const char *header)
-{
-    return postRequestWithUrlAndDataAndHeader(url, NULL, header);
-}
+
 

@@ -22,7 +22,7 @@ int httpMethod; // Method used to send Data to WebServer
 
 struct curl_slist *headers = NULL;
 
-#define BUFFER_SIZE  (256 * 1024)  /* 256 KB */
+#define BUFFER_SIZE  (1024 * 1024)  /* 1024 KB */
 
 struct write_result
 {

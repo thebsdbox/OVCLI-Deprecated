@@ -8,13 +8,17 @@
 
 // OneView headers
 #include "OVShow.h"
-#include "OVHttps.h"
+#include "dcHttp.h"
+//#include "OVHttps.h"
 #include "OVUtils.h"
 // Json Processing
 #include "jansson.h"
 // C libraries
 #include <stdlib.h>
 #include <string.h>
+
+extern char *OV_Version;
+
 
 /*
  
@@ -58,8 +62,10 @@ int ovShow(char *sessionID, int argumentCount, char *argument[])
         createURL(urlString, oneViewAddress, "network-sets");
     } else if (strstr(showType, "INTERCONNECT-GROUPS")) {
         createURL(urlString, oneViewAddress, "logical-interconnect-groups");
-    } else if (strstr(showType, "INTERCONNECTS")) {
+    } else if (stringMatch(showType, "INTERCONNECTS")) {
         createURL(urlString, oneViewAddress, "interconnects");
+    } else if (stringMatch(showType, "INTERCONNECTS-STATS")) {
+        createURL(urlString, oneViewAddress, "interconnects/0250bd0f-4936-4099-bc95-379ddc4ea58a/statistics/X1");
     } else {
             // Display the help (to be cleared at a later date
             printf("\n SHOW COMMANDS\n------------\n");
@@ -76,8 +82,12 @@ int ovShow(char *sessionID, int argumentCount, char *argument[])
     if (queryType) {
         
         // Pass the URL and sessionID to HP OneView and return the response
-        httpData = getRequestWithUrlAndHeader(urlString, sessionID);
-        
+        appendHttpHeader("Content-Type: application/json");
+        appendHttpHeader(OV_Version);
+        SetHttpMethod(DCHTTPGET);
+        createHeader("Auth: ", sessionID);
+        httpData = httpFunction(urlString);
+
         // If response is empty fail
         if(!httpData)
             return 1;

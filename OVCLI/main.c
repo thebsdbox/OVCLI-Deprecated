@@ -41,7 +41,6 @@
 
 #include "dcHttp.h"
 
-#include "yaml.h"
 
 int debug; // GLOBAL Variable
 char *OV_Version;
@@ -100,23 +99,7 @@ int is_valid_ip(char *ip_str)
     return 1;
 }
 
-int identifySystem(char *url)
-{
-    // This function will iterate through the available systems and attempt to identify the system and it's version
-    if (!url) {
-        // No URL
-        return 1;
-    }
-    //Begin Checks check
-    //char *httpData;
-    SetHttpMethod(DCHTTPGET);
-    // curl -k -X GET https://192.168.113.128/rest/version
-    // {"currentVersion":120,"minimumVersion":1}
-    // createURL(<#char *urlString#>, <#char *address#>, <#char *url#>)
-    // httpData = httpFunction(urlString);
-    
-    return 0;
-}
+
 
 int main(int argc, char *argv[])
 {
@@ -125,7 +108,7 @@ int main(int argc, char *argv[])
     //setHttpData("{\"ins_api\":{\"version\":\"1.2\",\"type\":\"cli_show\",\"chunk\":\"0\",\"sid\":\"1\",\"input\":\"show version\",\"output_format\":\"json\"}}");
     //appendHttpHeader("Content-Type: application/json");
     //printf("%s\n",httpFunction("http://192.168.113.50/ins"));
-    OV_Version = OV120;
+    OV_Version = OV200;
     char *oneViewAddress;
     //main2();
     //sleep(40);

@@ -14,10 +14,11 @@
 //
 
 #include "OVMessageBus.h"
+// DC Headers
+#include "dcHttp.h"
 
 // OneView Headers
 #include "OVUtils.h"
-#include "OVHttps.h"
 #include "OVMessageBusUtils.h"
 
 // JSON processing Header
@@ -26,6 +27,7 @@
 // Standard Libraries
 #include <ctype.h>
 #include <stdlib.h>
+#include <time.h>
 
 // RabbitMQ
 #include "amqp_ssl_socket.h"
@@ -34,12 +36,14 @@
 // Influx DB
 #include "libinfluxdb.h"
 
-uint64_t now_microseconds(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint64_t) tv.tv_sec * 1000000 + (uint64_t) tv.tv_usec;
-}
+extern char *OV_Version;
+
+//uint64_t now_microseconds(void)
+//{
+  //  struct timeval tv;
+   // gettimeofday(&tv, NULL);
+    //return (uint64_t) tv.tv_sec * 1000000 + (uint64_t) tv.tv_usec;
+//}
 
 int ovMsgBusCertGenerate(char *sessionID, char *argument[])
 {
@@ -50,9 +54,16 @@ int ovMsgBusCertGenerate(char *sessionID, char *argument[])
     
     root = json_pack("{s:s, s:s}", "type", "RabbitMqClientCertV2", "commonName", "default");
     createURL(urlString, oneViewAddress, "certificates/client/rabbitmq");
-    
+    //appendHttpHeader("Content-Type: application/json");
+    //appendHttpHeader(OV_Version);
+    //createHeader("Auth: ", sessionID);
+
+    SetHttpMethod(DCHTTPPOST);
+    setHttpData(json_dumps(root, JSON_ENSURE_ASCII));
+    setOVHeaders(sessionID);
+    httpData = httpFunction(urlString);
     // Call to HP OneView API to Generate the keys/certs (409 ERROR if certificate exists)
-    httpData = postRequestWithUrlAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
+    //httpData = postRequestWithUrlAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
     
     if(!httpData)
         return 1;
@@ -71,16 +82,24 @@ int ovMsgBusCertDownload(char *sessionID, char *argument[], char *path)
     
     root = json_pack("{s:s, s:s}", "type", "RabbitMqClientCertV2", "commonName", "default");
     createURL(urlString, oneViewAddress, "certificates/client/rabbitmq");
-       
+    
+    SetHttpMethod(DCHTTPPOST);
+    setHttpData(json_dumps(root, JSON_ENSURE_ASCII));
+    setOVHeaders(sessionID);
+    httpData = httpFunction(urlString);
     // Call to HP OneView API to Generate the keys/certs (409 ERROR if certificate exists)
-    httpData = postRequestWithUrlAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
+    //httpData = postRequestWithUrlAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
     
     if(!httpData)
         return 1;
     
     // Call to HP OneView for a client certificate and private key
     createURL(urlString, oneViewAddress, "certificates/client/rabbitmq/keypair/default");
-    httpData = getRequestWithUrlAndHeader(urlString, sessionID);
+    SetHttpMethod(DCHTTPGET);
+    setOVHeaders(sessionID);
+    httpData = httpFunction(urlString);
+    
+    //httpData = getRequestWithUrlAndHeader(urlString, sessionID);
     if(!httpData)
         return 1;
     // Process the raw http data and free the allocated memory
@@ -102,7 +121,10 @@ int ovMsgBusCertDownload(char *sessionID, char *argument[], char *path)
 
     // Call to HP OneView for a root Certificate Authority
     createURL(urlString, oneViewAddress, "certificates/ca");
-    httpData = getRequestWithUrlAndHeader(urlString, sessionID);
+    SetHttpMethod(DCHTTPGET);
+    setOVHeaders(sessionID);
+    httpData = httpFunction(urlString);
+    //httpData = getRequestWithUrlAndHeader(urlString, sessionID);
     if(!httpData)
         return 1;
     
@@ -162,7 +184,11 @@ int ovMetricMsgBusSetConfig(char *sessionID, char *argument[])
     root = json_pack("{s:[{s:s,s:s,s:s}]}", "sourceTypeList", "sourceType" ,type, "sampleIntervalInSeconds",  interval, "frequencyOfRelayInSeconds", frequency);
     createURL(urlString, oneViewAddress, "metrics/configuration");
     // Call to HP OneView API to Generate the keys/certs (409 ERROR if certificate exists)
-    httpData = putRequestWithURLAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
+    SetHttpMethod(DCHTTPPUT);
+    setHttpData(json_dumps(root, JSON_ENSURE_ASCII));
+    setOVHeaders(sessionID);
+    httpData = httpFunction(urlString);
+    //httpData = putRequestWithURLAndDataAndHeader(urlString, json_dumps(root, JSON_ENSURE_ASCII), sessionID);
     json_decref(root);
     return 0;
 }
@@ -181,7 +207,7 @@ int ovMetricMsgBusGetSettings(char *sessionID, char *argument[])
         } else if (stringMatch(type, "SETCONFIG")) {
             return ovMetricMsgBusSetConfig(sessionID, argument);
         } else {
-            printf ("No argument given for Settings\n");
+            ovMessageBusHelp();
             return -1;
         }
         
@@ -191,7 +217,10 @@ int ovMetricMsgBusGetSettings(char *sessionID, char *argument[])
        
     // Call to HP OneView for a client certificate and private key
     createURL(urlString, oneViewAddress, type);
-    httpData = getRequestWithUrlAndHeader(urlString, sessionID);
+    SetHttpMethod(DCHTTPGET);
+    setOVHeaders(sessionID);
+    httpData = httpFunction(urlString);
+    //httpData = getRequestWithUrlAndHeader(urlString, sessionID);
     if(!httpData)
         return 1;
     // Process the raw http data and free the allocated memory
@@ -383,7 +412,10 @@ int ovMsgBusListen(char *argument[], char *path)
                     // Post messages from the Message Bus to another web server
                     char urlString[strlen(argument[7])+2];
                     sprintf(urlString, "%s/%u", argument[7], (unsigned) envelope.delivery_tag);
-                    postRequestWithUrlAndData(argument[7], body);
+                    SetHttpMethod(DCHTTPPOST);
+                    setHttpData(body);
+                    httpFunction(urlString);
+                    //postRequestWithUrlAndData(argument[7], body);
                     break;
                 }
                 case OVINFLUXDB:
@@ -400,5 +432,26 @@ int ovMsgBusListen(char *argument[], char *path)
         }
     }
     return 0;
+}
+
+
+void ovMessageBusHelp()
+{
+    // Display the help (to be cleared at a later date
+    printf("\n OVCLI xxx.xxx.xxx.xxx MESSAGEBUS <OPERATION> <...> <...>");
+    printf("\n <OPERATION>");
+    printf("\n\t GENERATE (Generates Certificate)");
+    printf("\n\t CERT (Downloads Certicate)");
+    printf("\n\t METRIC (GETS/SETS configuration)");
+    printf("\n\t\t CAPABILITY (Displays configuration options)");
+    printf("\n\t\t GETCONFIG (Displays configuration settings)");
+    printf("\n\t\t SETCONFIG (Configures messagebus settings)");
+    printf("\n\t LISTEN (Connect to a MessageBus)");
+    printf("\n\t\t STATE (Listens on the State change MessageBus)");
+    printf("\n\t\t METRIC (Listens on the Metric MessageBus)");
+    printf("\n\t\t\t STDOUT/FILE/HTTP (Output options)");
+    printf("\n");
+
+
 }
 

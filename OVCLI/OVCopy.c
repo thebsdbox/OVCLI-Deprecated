@@ -148,6 +148,8 @@ int ovCopy (char *sessionID, char *argument[])
                     
                 }
             }
+        } else {
+            printf("Unknown CLONE command/n");
         }
 
     }

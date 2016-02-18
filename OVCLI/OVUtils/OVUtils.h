@@ -37,3 +37,6 @@ void createURL(char urlString[], char *address, char *url);
 int stringMatch(char *string1, char *string2);
 // Helper function to automate the headers
 void setOVHeaders(char *sessionID);
+
+//Determine version of HPE OneView
+int identifySystem(char *oneViewAddress);
